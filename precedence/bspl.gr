@@ -1,0 +1,20 @@
+@@eol_comments :: ?/‌‌#|(//).*?$/?
+
+protocol = type:`protocol` name:word '{' 'roles' roles:rolelist 'parameters' parameters:params references:references '}';
+
+params = ','.{param} ;
+rolelist = ','.{role} ;
+
+role = name:word ;
+
+references = { message | ref } ;
+
+ref = name:word '(' roles:rolelist '|' params:params ')' ;
+
+adornment = 'out' | 'in' | 'nil' | 'any' | 'opt' ;
+
+message = type:`message` sender:word ('->'|'→'|'↦') recipient:word [':'] name:word '[' parameters:params ']';
+
+word = /[\w-]+/ ;
+
+param = [adornment:adornment] name:word [key:'key'];

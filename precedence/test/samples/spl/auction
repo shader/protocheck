@@ -1,0 +1,9 @@
+Auction-Union {
+  roles A, set B, P : A ∪ B // Auctioneer, Bidders, All participants
+  parameters out id key, out bid, out finished
+
+  A ↦ B: Start[out id]
+  B ↦ P: Bid[id, out bidID, out bidder ∈ B :: out bid, nil done]
+  A ↦ B: Stop[id :: out done]
+  A ↦ {bidder | max bid}: Transfer[id :: in done]
+}

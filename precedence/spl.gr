@@ -1,0 +1,30 @@
+@@eol_comments :: ?/‌‌#|(//).*?$/?
+
+protocol = type:`protocol` name:word '{' 'roles' roles:rolelist 'parameters' parameters:params references:references '}';
+
+params = ','.{param [key:'key']} ;
+rolelist = ','.{role} ;
+
+role_exp = name:word [op:set_def expr:(set_comb).{word}] ;
+role = [set:'set'] >role_exp;
+set_def = ':'|'⊂'|'∈';
+set_comb = '∪'|'⋃'|'∩'|'⋂';
+
+references = { message | ref } ;
+
+payload = key:paramlist [('::'|':') data:paramlist] ;
+
+ref = name:word '(' roles:rolelist '|' >payload ')' ;
+
+adornment = 'out' | 'in' | 'nil' | 'any' | 'opt' ;
+
+message = type:`message` sender:word ('->'|'→'|'↦') recipients:recipients [':'] name:word '[' >payload ']';
+
+recipients = word | reduction ;
+
+word = /[\w-]+/ ;
+
+paramlist = ','.{param} ;
+param = [adornment:adornment] >role_exp;
+
+reduction = '{' [op:word !'|'] name:word ['|' constraint:{word}] '}' ;

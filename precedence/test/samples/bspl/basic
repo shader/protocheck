@@ -1,0 +1,6 @@
+BasicProtocol {
+  roles A, B
+  parameters out id key, out data
+  
+  A → B: test[out id, out data]
+}
