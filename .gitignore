@@ -12,3 +12,5 @@ Thumbs.db
 .cache
 .eggs
 .tox/
+bspl_parser.py
+spl_parser.py
