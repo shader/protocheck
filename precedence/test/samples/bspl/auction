@@ -3,6 +3,6 @@ Auction {
   parameters out id key, out bid, out finished
 
   A ↦ B: Start[out id]
-  B ↦ P: Bid[in id, out bidID key, out bid, nil done]
+  B ↦ A: Bid[in id, out bidID key, out bid, nil done]
   A ↦ B: Stop[in id, out done]
 }
