@@ -1,20 +1,20 @@
 @@eol_comments :: ?/‌‌#|(//).*?$/?
 
-protocol = type:`protocol` name:word '{' 'roles' roles:rolelist 'parameters' parameters:params references:references '}';
+document = {protocol} ;
+
+protocol = type:`protocol` name:word '{' 'roles' roles:roles 'parameters' parameters:params references:references '}';
+
+roles = ','.{role} ;
+role = name:word ;
 
 params = ','.{param} ;
-rolelist = ','.{role} ;
-
-role = name:word ;
+param = [adornment:adornment] name:word [key:'key'];
+adornment = 'out' | 'in' | 'nil' | 'any' | 'opt' ;
 
 references = { message | ref } ;
 
-ref = name:word '(' roles:rolelist '|' params:params ')' ;
-
-adornment = 'out' | 'in' | 'nil' | 'any' | 'opt' ;
+ref = name:word '(' roles:roles '|' params:params ')' ;
 
 message = type:`message` sender:word ('->'|'→'|'↦') recipient:word [':'] name:word '[' parameters:params ']';
 
 word = /[\w-]+/ ;
-
-param = [adornment:adornment] name:word [key:'key'];
