@@ -16,3 +16,6 @@ test: .venv setup.py
 clean:
 	rm -rf .venv build *.egg-info
 	rm -f `find . -name \*.pyc -print0 | xargs -0`
+
+parser: precedence/bspl.gr
+	cd precedence; grako -m Bspl bspl.gr >bspl_parser.py
