@@ -5,12 +5,12 @@ from precedence import precedence
 @pytest.fixture
 def Auction():
     with open('precedence/test/samples/bspl/auction') as file:
-        return Protocol.load(file.read())
+        return load(file.read())[0]
 
 @pytest.fixture
 def Basic():
     with open('precedence/test/samples/bspl/basic') as file:
-        return Protocol.load(file.read())
+        return load(file.read())[0]
 
 @pytest.fixture
 def A():
@@ -29,26 +29,31 @@ def Bid(Auction):
     return Auction.messages['Bid']
 
 def test_keys(Bid, Basic):
-    assert Basic.keys == ["id"]
+    assert [p.name for p in Basic.keys] == ["id"]
     #id explicitly declared key in P, but not message. Should still be considered a key
-    assert len(Bid.keys) == 2
-    assert 'bidID' in Bid.keys
-    assert 'id' in Bid.keys
+    assert len({p for p in Bid.keys}) == 2
+    assert Parameter('bidID') in Bid.keys
+    assert Parameter('id') in Bid.keys
 
+def test_parameter(Bid):
+    assert len(Bid.parameters) > 0
+    assert Parameter('id') in Bid.parameters
+    assert Parameter('id').adornment
+    
 def test_params(Bid):
     assert len(Bid.ins) == 1
-    assert Bid.ins[0]["name"] == "id"
+    assert Bid.ins[0].name == "id"
 
     assert len(Bid.outs) == 2
-    assert Bid.outs[0]["name"] == "bidID"
-    assert Bid.outs[1]["name"] == "bid"
+    assert "bidID" in [p.name for p in Bid.outs]
+    assert "bid" in [p.name for p in Bid.outs]
 
     assert len(Bid.nils) == 1
-    assert Bid.nils[0]["name"] == "done"
+    assert Bid.nils[0].name == "done"
 
 def test_msg_roles(Bid):
-    assert Bid.sender == "B"
-    assert Bid.recipient == "A"
+    assert Bid.sender.name == "B"
+    assert Bid.recipient.name == "A"
 
 def test_protocol_roles(Basic):
     assert len(Basic.roles.keys()) == 2
