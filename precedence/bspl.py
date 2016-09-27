@@ -12,16 +12,20 @@ class Registered(type):
         name = schema['name'] if isinstance(schema, dict) else schema
 
         if name not in cls._registry:
-            cls._registry[name] = super(Registered, cls).__call__(schema, *args, **kwargs)
+            cls._registry[name] = super(Registered, cls).__call__(schema, parent, *args, **kwargs)
 
         obj = cls._registry[name]
         obj.new_instance(schema, parent)
         return obj
 
 class Base(metaclass=Registered):
-    def __init__(self, schema, parent=None):
+    def __init__(self, schema, parent):
         self.schema = schema
         self.parent = parent
+
+    @classmethod
+    def reset_registry(cls):
+        cls._registry = {}
 
     @property
     def name(self):
@@ -34,7 +38,7 @@ class Base(metaclass=Registered):
     def new_instance(self, schema, parent):
         pass
 
-def reference(schema, parent=None):
+def reference(schema, parent):
     if schema["type"] == "message":
         return Message(schema, parent)
     elif schema["type"] == "protocol":
@@ -51,9 +55,9 @@ class Protocol(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
 
-        self.parameters = {Parameter(p, self) for p in schema['parameters']}
+        self.parameters = {p['name']: Parameter(p, self) for p in schema['parameters']}
         
-        self.keys = {p for p in self.parameters if p.key}
+        self.keys = {p for p in self.parameters.values() if p.key}
         if parent:
             self.keys.update(parent.keys)
 
@@ -63,11 +67,11 @@ class Protocol(Base):
 
     @property
     def all_parameters(self):
-        return flatten([m.parameters for m in self.messages])
+        return flatten([m.parameters.values() for m in self.messages])
 
     def _adorned(self, adornment):
         "helper method for selecting parameters with a particular adornment"
-        return [p for p in self.parameters if p.adornment(self) == adornment]
+        return {p for p in self.parameters.values() if p.adornment(self) == adornment}
 
     @property
     def ins(self):
@@ -86,56 +90,89 @@ class Protocol(Base):
         return {k:v for r in self.references for k,v in r.messages.items()}
 
     def is_enactable(self):
-        return consistent(And(self.correctness, self.enactability))
+        return consistent(And(self.correct, self.enactable)).satisfy_one()
             
     def is_live(self):
-        return self.is_enactable() and not consistent(And(self.correctness,
-                                                          self.maximality,
-                                                          ~self.completion))
+        return self.is_enactable() and not consistent(self.dead_end).satisfy_one()
 
     def is_safe(self):
+        #prove there are no unsafe enactments
+        return not consistent(self.unsafe).satisfy_one()
+
+    def is_atomic(self):
+        for r in self.references:
+            if isinstance(r, Message):
+                continue
+            elif not consistent(And(self.correct,
+                                    self.maximal,
+                                    r.begin,
+                                    ~r.complete)).satisfy_one():
+                return False
+        return True
+
+    @property
+    def unsafe(self):
         clauses = []
-        for p in self.parameters:
+        for p in self.parameters.values():
             if len(p.messages['out']) > 1:
                 #at most one message producing this parameter can be observed at once
                 #negate to prove it is impossible to break
                 clauses.extend(~OneHot0(*p.messages['out']))
+        if clauses:
+            #at least one conflict
+            return And(self.correct, *clauses)
+        else:
+            #no conflicting pairs; automatically safe
+            return expr(False)
 
-        return not consistent(And(self.correctness, *clauses))
-
-    def is_atomic(self):
-        pass
-
-    @property
-    def enactability(self):
-        pass
 
     @property
-    def correctness(self):
+    def enactable(self):
+        "It must be possible to bind each out parameter with at least one message"
         clauses = []
-        for m in self.messages:
-            clauses.push(And(m.transmission, m.emission, m.reception))
-        for r in self.roles:
-            clauses.push(And(r.ordering, r.minimality))
+        for p in self.outs:
+            clauses.append(Or(*[m.sent for m in p.messages['out']]))
         return And(*clauses)
 
     @property
-    def maximality(self):
-        pass
+    def dead_end(self):
+        return And(self.correct, self.maximal, ~self.complete)
 
     @property
-    def completion(self):
+    def correct(self):
+        clauses = []
+        for m in self.messages.values():
+            clauses.append(And(m.transmission, m.emission, m.reception))
+        for r in self.roles.values():
+            clauses.append(And(r.ordering, r.minimality))
+        return And(*clauses)
+
+    @property
+    def maximal(self):
+        "Each message must be sent, or it must be blocked by a prior binding"
+        clauses = []
+        for m in self.messages.values():
+            clauses.append(m.delivered)
+            clauses.append(m.sent | m.blocked)
+        return And(*clauses)
+
+    @property
+    def begin(self):
+        return Or(*[m.sent for m in self.messages.values()])
+
+    @property
+    def complete(self):
         "Each out parameter must be observed by at least one role"
         clauses = []
         for p in self.outs:
             alts = []
-            for role in roles:
-                alts.push(observe(role, p))
-            clauses.push(Or(*alts))
+            for role in self.roles:
+                alts.append(observe(role, p))
+            clauses.append(Or(*alts))
         return And(*clauses)
 
 class Message(Protocol):
-    def __init__(self, schema, parent=None):
+    def __init__(self, schema, parent):
         super().__init__(schema, parent)
         self.sender = Role({"name": schema['sender']}, parent)
         self.recipient = Role({"name": schema['recipient']}, parent)
@@ -144,72 +181,89 @@ class Message(Protocol):
     def messages(self):
         return {self.name: self}
 
+    @property
     def sent(self):
         return send(self.sender, self.name)
 
+    @property
     def received(self):
-        return send(self.recipient, self.name)
+        return recv(self.recipient, self.name)
+
+    @property
+    def delivered(self):
+        return Implies(self.sent, self.received)
+
+    @property
+    def blocked(self):
+        return Or(*[observe(self.sender, p) for p in self.nils.union(self.outs)])
 
     @property
     def transmission(self):
         "A message must be sent before it can be received"
-        return ~self.received() | sequential(self.sent(), self.received())
+        return ~self.received | sequential(self.sent, self.received)
 
     @property
     def emission(self):
         """Sending a message must be preceded by observation of its ins,
            but cannot be preceded by observation of any nils"""
-        ins = [~self.sent() | sequential(observe(self.sender, p), self.sent())
+        ins = [~self.sent | sequential(observe(self.sender, p), self.sent)
                for p in self.ins]
-        nils = [~self.sent() | ~sequential(observe(self.sender, p), self.sent())
+        nils = [~self.sent | ~sequential(observe(self.sender, p), self.sent)
                 for p in self.nils]
-        outs = [~self.sent() | simultaneous(observe(self.sender, p), self.sent())
+        outs = [~self.sent | simultaneous(observe(self.sender, p), self.sent)
                 for p in self.outs]
         return And(And(And(*ins), *nils), *outs)
 
     @property
     def reception(self):
         "Each message reception is accompanied by the observation of its parameters; either they are observed, or the message itself is not"
-        clauses = [Or(~self.received(),
-                      sequential(p, self.received()),
-                      simultaneous(p, self.received()))
-               for p in map(partial(observe, recipient), self.ins + self.outs)]
+        clauses = [Or(~self.received,
+                      sequential(p, self.received),
+                      simultaneous(p, self.received))
+               for p in map(partial(observe, self.recipient), self.ins.union(self.outs))]
         return And(*clauses)
 
 class Role(Base):
     @property
     def messages(self):
-        return [m for m in parent.messages
-                if m.sender == self.name or m.recipient == self.name]
+        return {m.name:m for m in self.parent.messages.values()
+                if m.sender == self or m.recipient == self}
 
     def observe(self, msg):
         return observe(self.name, msg)
 
+    @property
     def minimality(self):
         "Every parameter observed by a role must have a corresponding message transmission or reception"
         sources = {}
-        for m in self.messages:
-            if m.sender == self.name:
-                for p in m.ins + m.outs:
+        for m in self.messages.values():
+            if m.sender == self:
+                for p in m.ins.union(m.outs):
                     if p in sources:
-                        sources[p].push(m)
+                        sources[p].append(m)
                     else:
                         sources[p] = [m]
-        
+
         return And(*[Implies(self.observe(p),
                              Or(*[self.observe(m) for m in sources[p]]))
                      for p in sources])
 
     @property
     def ordering(self):
-        return ordered(*[m for m in self.parent.messages if m.sender == self.name])
+        msgs = [m.sent for m in self.parent.messages.values() if m.sender == self]
+        if len(msgs) > 1:
+            return ordered(*msgs)
+        else:
+            return expr(True)
 
 class Parameter(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
         self.key = schema['key']
-        self.messages = {}
         self.instances = {}
+        self.messages = {}
+
+        self.new_instance(schema, parent)
 
     def new_instance(self, schema, parent):
         self.instances[parent] = schema
@@ -251,7 +305,7 @@ def reception(msg, recipient):
     clauses = [Or(~r,
                   sequential(p, r),
                   simultaneous(p, r))
-               for p in map(partial(observe, recipient), msg.parameters)]
+               for p in map(partial(observe, recipient), msg.parameters.values())]
     return And(*clauses)
 
 if name == "__main__":
