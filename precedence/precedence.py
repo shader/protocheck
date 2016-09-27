@@ -98,4 +98,4 @@ def extract_events(*statements):
 
 def consistent(*statements):
     events = extract_events(*statements)
-    return And(timeline(*events), occurrence(*events), transitivity(*events), *statements)
+    return And(timeline(*events), occurrence(*events), transitivity(*events), *statements).to_cnf()
