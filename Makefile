@@ -3,9 +3,6 @@
 parser: precedence/bspl.gr
 	cd precedence; grako -m Bspl bspl.gr >bspl_parser.py
 
-activate: deps
-	PYTHONPATH=.venv ; . .venv/bin/activate
-
 .venv:
 	if [ ! -e ".venv/bin/activate_this.py" ] ; then virtualenv --clear --python=python3.4 .venv ; fi
 	. .venv/bin/activate && pip install --upgrade pip
