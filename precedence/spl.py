@@ -1,5 +1,5 @@
 from precedence.precedence import *
-from precedence.spl_parser import splParser
+from precedence.spl_parser import SplParser
 from functools import partial
 
 messages = []
