@@ -1,6 +1,9 @@
 .PHONY: deps .venv
 
-all: deps
+parser: precedence/bspl.gr
+	cd precedence; grako -m Bspl bspl.gr >bspl_parser.py
+
+activate: deps
 	PYTHONPATH=.venv ; . .venv/bin/activate
 
 .venv:
@@ -16,6 +19,3 @@ test: .venv setup.py
 clean:
 	rm -rf .venv build *.egg-info
 	rm -f `find . -name \*.pyc -print0 | xargs -0`
-
-parser: precedence/bspl.gr
-	cd precedence; grako -m Bspl bspl.gr >bspl_parser.py
