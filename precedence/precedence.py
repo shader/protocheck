@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 import os
 import sys
-import pyeda
+import boolexpr as bx
+from boolexpr import *
 from itertools import combinations, permutations, chain
 import re
-from pyeda.inter import *
+
+ctx = bx.Context()
 
 def name(var):
     "convert name or var to name"
@@ -12,13 +14,13 @@ def name(var):
         return var.name
     if 'name' in var:
         return var['name']
-    return var
+    return str(var)
 
 def var(n):
     "convert name or var to var"
-    if type(n) == pyeda.boolalg.expr.Variable:
+    if type(n) == bx.wrap.Variable:
         return n
-    return exprvar(n)
+    return ctx.get_var(n)
 
 def wrap(fn):
     "Apply function to all arguments on a function"
@@ -93,7 +95,7 @@ def transitivity(*events):
     return And(*flatten([sim(*tup) + seq(*tup) for tup in permutations(events, 3)]))
 
 def extract_events(*statements):
-    inputs = flatten([s.inputs for s in statements])
+    inputs = flatten([s.support() for s in statements])
     return set(flatten([re.split('[>.*]', i.name) for i in inputs]))
 
 def consistent(*statements):

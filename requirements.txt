@@ -2,3 +2,4 @@ pyeda
 pycosat
 pytest
 grako
+boolexpr

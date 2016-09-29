@@ -55,7 +55,7 @@ class Role():
     
 @wrap(name)
 def observe(role, event):
-    return exprvar(role + ":" + event)
+    return var(role + ":" + event)
 
 send = observe
 recv = observe

@@ -123,7 +123,7 @@ class Protocol(Base):
             return And(self.correct, *clauses)
         else:
             #no conflicting pairs; automatically safe
-            return expr(False)
+            return bx.ZERO
 
 
     @property
@@ -254,7 +254,7 @@ class Role(Base):
         if len(msgs) > 1:
             return ordered(*msgs)
         else:
-            return expr(True)
+            return bx.ONE
 
 class Parameter(Base):
     def __init__(self, schema, parent=None):
@@ -284,7 +284,7 @@ class Parameter(Base):
 
 @wrap(name)
 def observe(role, event):
-    return exprvar(role + ":" + event)
+    return var(role + ":" + event)
 
 send = observe
 recv = observe
