@@ -62,8 +62,8 @@ def test_observe():
     assert str(observe(A, Bid)) == 'A:Bid'
 
 def test_transmission():
-    assert transmission(Bid, A, B).equivalent(Or(Not(observe(B,Bid)), sequential(observe(A, Bid), observe(B, Bid))))
+    assert transmission(Bid, A, B).equiv(or_(not_(observe(B,Bid)), sequential(observe(A, Bid), observe(B, Bid))))
 
 def test_reception():
     #assert reception(Bid, B) is None
-    assert precedence.consistent(reception(Bid, B)).satisfy_one()
+    assert precedence.consistent(reception(Bid, B)).sat()[1]

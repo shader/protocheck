@@ -58,14 +58,14 @@ def test_observe(Bid, A):
     assert str(observe(A, Bid)) == 'A:Bid'
 
 def test_transmission(Bid, A, B):
-    assert transmission(Bid, A, B).equivalent(
-        Or(Not(observe(B,Bid)),
+    assert transmission(Bid, A, B).equiv(
+        or_(not_(observe(B,Bid)),
            sequential(observe(A, Bid),
                       observe(B, Bid))))
 
 def test_reception(Bid, B):
     #assert reception(Bid, B) is None
-    assert precedence.consistent(reception(Bid, B)).satisfy_one()
+    assert precedence.consistent(reception(Bid, B)).sat()[0]
 
 def test_role_ordering(A):
     assert A.ordering
@@ -107,8 +107,8 @@ def test_is_enactable(Auction):
 def test_protocol_dead_end(Auction):
     #assert Auction.dead_end
     e = consistent(Auction.dead_end)
-    print(len(e.xs))
-    o = e.satisfy_one()
+    print(e.size())
+    o = e.sat()[1]
     if o:
         print([k for k,v in o.items() if v==1])
     assert not o
@@ -119,7 +119,7 @@ def test_is_live(Auction):
 
 #@pytest.mark.skip(reason='Slow')
 def test_protocol_unsafe(Auction):
-    o = consistent(Auction.unsafe).to_cnf().satisfy_one()
+    o = consistent(Auction.unsafe).sat()[1]
     if o:
         print([k for k,v in o.items() if v==1])
     assert not o

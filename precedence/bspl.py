@@ -90,23 +90,23 @@ class Protocol(Base):
         return {k:v for r in self.references for k,v in r.messages.items()}
 
     def is_enactable(self):
-        return consistent(And(self.correct, self.enactable)).satisfy_one()
+        return consistent(and_(self.correct, self.enactable)).sat()[0]
             
     def is_live(self):
-        return self.is_enactable() and not consistent(self.dead_end).satisfy_one()
+        return self.is_enactable() and not consistent(self.dead_end).sat()[0]
 
     def is_safe(self):
         #prove there are no unsafe enactments
-        return not consistent(self.unsafe).satisfy_one()
+        return not consistent(self.unsafe).sat()[0]
 
     def is_atomic(self):
         for r in self.references:
             if isinstance(r, Message):
                 continue
-            elif not consistent(And(self.correct,
+            elif not consistent(and_(self.correct,
                                     self.maximal,
                                     r.begin,
-                                    ~r.complete)).satisfy_one():
+                                    ~r.complete)).sat()[0]:
                 return False
         return True
 
@@ -117,10 +117,10 @@ class Protocol(Base):
             if len(p.messages['out']) > 1:
                 #at most one message producing this parameter can be observed at once
                 #negate to prove it is impossible to break
-                clauses.extend(~OneHot0(*p.messages['out']))
+                clauses.extend(~onehot0(*p.messages['out']))
         if clauses:
             #at least one conflict
-            return And(self.correct, *clauses)
+            return and_(self.correct, *clauses)
         else:
             #no conflicting pairs; automatically safe
             return bx.ZERO
@@ -131,21 +131,21 @@ class Protocol(Base):
         "It must be possible to bind each out parameter with at least one message"
         clauses = []
         for p in self.outs:
-            clauses.append(Or(*[m.sent for m in p.messages['out']]))
-        return And(*clauses)
+            clauses.append(or_(*[m.sent for m in p.messages['out']]))
+        return and_(*clauses)
 
     @property
     def dead_end(self):
-        return And(self.correct, self.maximal, ~self.complete)
+        return and_(self.correct, self.maximal, ~self.complete)
 
     @property
     def correct(self):
         clauses = []
         for m in self.messages.values():
-            clauses.append(And(m.transmission, m.emission, m.reception))
+            clauses.append(and_(m.transmission, m.emission, m.reception))
         for r in self.roles.values():
-            clauses.append(And(r.ordering, r.minimality))
-        return And(*clauses)
+            clauses.append(and_(r.ordering, r.minimality))
+        return and_(*clauses)
 
     @property
     def maximal(self):
@@ -154,11 +154,11 @@ class Protocol(Base):
         for m in self.messages.values():
             clauses.append(m.delivered)
             clauses.append(m.sent | m.blocked)
-        return And(*clauses)
+        return and_(*clauses)
 
     @property
     def begin(self):
-        return Or(*[m.sent for m in self.messages.values()])
+        return or_(*[m.sent for m in self.messages.values()])
 
     @property
     def complete(self):
@@ -168,8 +168,8 @@ class Protocol(Base):
             alts = []
             for role in self.roles:
                 alts.append(observe(role, p))
-            clauses.append(Or(*alts))
-        return And(*clauses)
+            clauses.append(or_(*alts))
+        return and_(*clauses)
 
 class Message(Protocol):
     def __init__(self, schema, parent):
@@ -191,11 +191,11 @@ class Message(Protocol):
 
     @property
     def delivered(self):
-        return Implies(self.sent, self.received)
+        return impl(self.sent, self.received)
 
     @property
     def blocked(self):
-        return Or(*[observe(self.sender, p) for p in self.nils.union(self.outs)])
+        return or_(*[observe(self.sender, p) for p in self.nils.union(self.outs)])
 
     @property
     def transmission(self):
@@ -212,16 +212,16 @@ class Message(Protocol):
                 for p in self.nils]
         outs = [~self.sent | simultaneous(observe(self.sender, p), self.sent)
                 for p in self.outs]
-        return And(And(And(*ins), *nils), *outs)
+        return and_(and_(and_(*ins), *nils), *outs)
 
     @property
     def reception(self):
         "Each message reception is accompanied by the observation of its parameters; either they are observed, or the message itself is not"
-        clauses = [Or(~self.received,
+        clauses = [or_(~self.received,
                       sequential(p, self.received),
                       simultaneous(p, self.received))
                for p in map(partial(observe, self.recipient), self.ins.union(self.outs))]
-        return And(*clauses)
+        return and_(*clauses)
 
 class Role(Base):
     @property
@@ -244,8 +244,8 @@ class Role(Base):
                     else:
                         sources[p] = [m]
 
-        return And(*[Implies(self.observe(p),
-                             Or(*[self.observe(m) for m in sources[p]]))
+        return and_(*[impl(self.observe(p),
+                             or_(*[self.observe(m) for m in sources[p]]))
                      for p in sources])
 
     @property
@@ -297,16 +297,16 @@ def dependencies(msg, sender):
     "Sending a message must be preceded by observation of its ins, and occur simultaneous to observation of its outs"
     ins = [~send(sender, msg) | sequential(observe(sender, p), send(sender, msg)) for p in msg.ins]
     outs = [~send(sender, msg) | simultaneous(observe(sender, p), send(sender, msg)) for p in msg.outs]
-    return And(And(*ins), *outs)
+    return and_(and_(*ins), *outs)
         
 def reception(msg, recipient):
     "Each message reception is accompanied by the observation of its parameters; either they are observed, or the message itself is not"
     r = recv(recipient, msg)
-    clauses = [Or(~r,
+    clauses = [bx.or_(~r,
                   sequential(p, r),
                   simultaneous(p, r))
                for p in map(partial(observe, recipient), msg.parameters.values())]
-    return And(*clauses)
+    return and_(*clauses)
 
 if name == "__main__":
     ast = generic_main(main, bsplParser, name='bspl')

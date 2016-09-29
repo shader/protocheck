@@ -68,22 +68,22 @@ def dependencies(msg, sender):
     "Sending a message must be preceded by observation of its ins, and occur simultaneous to observation of its outs"
     ins = [~send(sender, msg) | sequential(observe(sender, p), send(sender, msg)) for p in msg.ins]
     outs = [~send(sender, msg) | simultaneous(observe(sender, p), send(sender, msg)) for p in msg.outs]
-    return And(And(*ins), *outs)
+    return and_(and_(*ins), *outs)
         
 def reception(msg, recipient):
     "Each message reception is accompanied by the observation of its parameters; either they are observed, or the message itself is not"
     r = recv(recipient, msg)
-    clauses = [Or(~r,
+    clauses = [or_(~r,
                   sequential(p, r),
                   simultaneous(p, r))
                for p in map(partial(observe, recipient), msg.parameters)]
-    return And(*clauses)
+    return and_(*clauses)
 
 def minimality(parameter, role):
     "Every parameter observed by a role must have a corresponding message transmission or reception"
     messages = [m for m in role.messages if paraameter in m.parameters]
     clauses = [Implies(observe(role, parameter), send(role, m) | recv(role, m)) for m in messages]
-    return And(*clauses)
+    return and_(*clauses)
 
 if name == "__main__":
     ast = generic_main(main, splParser, name='spl')
