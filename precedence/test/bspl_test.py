@@ -64,7 +64,6 @@ def test_transmission(Bid, A, B):
                       observe(B, Bid))))
 
 def test_reception(Bid, B):
-    #assert reception(Bid, B) is None
     assert precedence.consistent(reception(Bid, B)).sat()[0]
 
 def test_role_ordering(A):
@@ -80,24 +79,26 @@ def test_minimality(A):
 
 def test_enactable(Auction):
     assert Auction.enactable
-    print(Auction.enactable)
     assert consistent(Auction.enactable)
 
+#@pytest.mark.skip(reason='Slow')
 def test_correct(Auction):
-    assert Auction.correct
-    assert consistent(Auction.correct)
+    c = Auction.correct
+    assert c
+    assert consistent(Auction.correct).sat()[1]
 
+#@pytest.mark.skip(reason='Slow')
 def test_maximal(Auction):
     assert Auction.maximal
-    assert consistent(Auction.maximal)
+    assert consistent(Auction.maximal).sat()[1]
 
 def test_begin(Auction):
     assert Auction.begin
-    assert consistent(Auction.begin)
+    assert consistent(Auction.begin).sat()[1]
 
 def test_complete(Auction):
     assert Auction.complete
-    assert consistent(Auction.complete)
+    assert consistent(Auction.complete).sat()[1]
 
 #@pytest.mark.skip(reason='Slow')
 def test_is_enactable(Auction):
@@ -105,12 +106,14 @@ def test_is_enactable(Auction):
 
 #@pytest.mark.skip(reason='Slow')
 def test_protocol_dead_end(Auction):
-    #assert Auction.dead_end
+    assert Auction.dead_end
+    #print("complete: ", Auction.complete)
+    #print("correct: ", Auction.correct)
     e = consistent(Auction.dead_end)
     print(e.size())
     o = e.sat()[1]
     if o:
-        print([k for k,v in o.items() if v==1])
+        print([k for k,v in o.items() if v])
     assert not o
 
 #@pytest.mark.skip(reason='Slow')
@@ -124,7 +127,7 @@ def test_protocol_unsafe(Auction):
         print([k for k,v in o.items() if v==1])
     assert not o
 
-#@pytest.mark.skip(reason='Slow')
+@pytest.mark.skip(reason='Slow')
 def test_protocol_safe(Auction):
     assert Auction.is_safe()
 

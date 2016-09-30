@@ -1,6 +1,13 @@
 import pytest
-import precedence
+from precedence.precedence import *
 
-@pytest.mark.skip(reason='Tests not implemented')
-def test_something(self):
-	self.assertTrue(False)
+def test_occurrence():
+    occ = occurrence(*extract_events(simultaneous('a', 'b')))
+    print('occurrence: ', occ)
+    formula = and_(occ, simultaneous('a', 'b'), not_(var('a')))
+    print('formula: ', formula)
+    s = formula.sat()[1]
+    if s:
+        print('solution: ', [k for k,v in s.items() if v])
+    assert not s
+

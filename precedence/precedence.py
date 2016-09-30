@@ -7,6 +7,7 @@ from itertools import combinations, permutations, chain
 import re
 
 ctx = bx.Context()
+aux = bx.Context()
 
 def name(var):
     "convert name or var to name"
@@ -33,25 +34,22 @@ def wrap(fn):
 def pairs(xs):
     return combinations(xs, 2)
 
-@wrap(name)
-def sequential_pair(a, b):
-    return var(a + ">" + b)
-
-@wrap(name)
-def simultaneous_pair(a, b):
-    return var(a+"*"+b)
-
 def pairwise(fn, xs):
     return map(lambda p: fn(*p), pairs(xs))
 
-def sequential(*args):
-    "Arguments occur sequentially"
-    return and_(*pairwise(sequential_pair, args))
+@wrap(name)
+def sequential(a, b, *rest):
+    if rest:
+        return and_(*pairwise(sequential, args))
+    return var(a + ">" + b)
 
 @wrap(name)
-def simultaneous(*args):
-    "All arguments are pairwise simultaneous"
-    return and_(*pairwise(simultaneous_pair, sorted(args)))
+def simultaneous(a, b, *rest):
+    if rest:
+        return and_(*pairwise(simultaneous, args))
+    
+    a,b = sorted((a,b)) #make sure we always use pairs in the same order
+    return var(a+"*"+b)
 
 @wrap(var)
 def ordered(*args):
@@ -70,17 +68,19 @@ def causal(event, causes):
 def timeline(*events):
     "A timeline is linear, and allows only a single relationship between each pair of events; a>b, b>a, or a*b"
     return and_(
-        *pairwise(lambda a,b: ~a | ~b | onehot(simultaneous_pair(a,b), sequential_pair(a,b), sequential_pair(b,a)), events)
+        *pairwise(lambda a,b: ~a | ~b | onehot(simultaneous(a,b),
+                                               sequential(a,b),
+                                               sequential(b,a)), events)
     )
 
 @wrap(var)
 def occurrence(*events):
     "Relationships between events imply that the events themselves occur"
-    return and_(
-        and_(*pairwise(lambda a,b: impl(simultaneous_pair(a,b), a&b), events)), #a*b => a & b
-        and_(*pairwise(lambda a,b: impl(sequential_pair(a,b), a&b), events)), #a>b => a & b
-        and_(*pairwise(lambda a,b: impl(sequential_pair(b,a), a&b), events)) #b>a => a & b
-    )
+    return and_(*pairwise(lambda a,b: impl(or_(simultaneous(a,b),
+                                               sequential(a,b),
+                                               sequential(b,a)),
+                                           a & b),
+                          events))
 
 flatten = chain.from_iterable
 
@@ -99,12 +99,26 @@ def extract_events(*statements):
     inputs = flatten([s.support() for s in statements])
     return set(flatten([re.split('[>.*]', name(i)) for i in inputs]))
 
+def group_events(events):
+    grouped = {}
+    for e in events:
+        role, event = re.split(':', e)
+        if role in grouped:
+            grouped[role].append(e)
+        else:
+            grouped[role] = [e]
+    return grouped
+
 def consistent(*statements):
     events = extract_events(*statements)
-    formula = and_(timeline(*events),
-                   occurrence(*events),
-                   transitivity(*events),
-                   *statements)
-    #print(formula.size())
-    return formula.simplify().tseytin(ctx)
-    
+    groups = group_events(events)
+
+    clauses = []
+    for role in groups:
+        es = groups[role]
+        clause = and_(timeline(*es),
+                      occurrence(*es),
+                      transitivity(*es))
+        clauses.append(clause)
+    formula = and_(and_(*clauses), *statements)
+    return formula.tseytin(aux)
