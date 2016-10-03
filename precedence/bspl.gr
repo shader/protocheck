@@ -1,6 +1,6 @@
 @@eol_comments :: ?/‌‌#|(//).*?$/?
 
-document = {protocol} ;
+document = {protocol}+ ;
 
 protocol = type:`protocol` name:word '{' 'roles' roles:roles 'parameters' parameters:params references:references '}';
 
@@ -13,7 +13,9 @@ adornment = 'out' | 'in' | 'nil' | 'any' | 'opt' ;
 
 references = { message | ref } ;
 
-ref = name:word '(' roles:roles '|' params:params ')' ;
+ref1 = name:word '(' roles:roles '|' params:params ')' ;
+ref2 = name:word '(' params:params ')' ;
+ref = type:`protocol` (>ref1 | >ref2);
 
 message = type:`message` sender:word ('->'|'→'|'↦') recipient:word [':'] name:word '[' parameters:params ']';
 

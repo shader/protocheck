@@ -2,6 +2,8 @@ from precedence.precedence import *
 from precedence.bspl_parser import BsplParser
 from functools import partial
 import itertools
+import argparse
+import re
 
 def flatten(nested):
     return list(itertools.chain.from_iterable(nested))
@@ -114,15 +116,15 @@ class Protocol(Base):
     def unsafe(self):
         clauses = []
         for p in self.parameters.values():
-            if len(p.messages['out']) > 1:
+            if p.messages.get('out', None) and len(p.messages['out']) > 1:
                 #at most one message producing this parameter can be observed at once
                 #negate to prove it is impossible to break
-                clauses.extend(~onehot0(*p.messages['out']))
+                clauses.append(~onehot0(*[m.sent for m in p.messages['out']]))
         if clauses:
             #at least one conflict
             return and_(self.correct, *clauses)
         else:
-            #no conflicting pairs; automatically safe
+            #no conflicting pairs; automatically safe -> not unsafe
             return bx.ZERO
 
 
@@ -308,5 +310,24 @@ def reception(msg, recipient):
                for p in map(partial(observe, recipient), msg.parameters.values())]
     return and_(*clauses)
 
-if name == "__main__":
-    ast = generic_main(main, bsplParser, name='bspl')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='BSPL Protocol property checker')
+    parser.add_argument('-i','--input', help='Input file name',required=True)
+    args = parser.parse_args()
+
+    with open(args.input) as file:
+        spec = file.read()
+        spec = re.sub(r'\$\\msf{(\w+)}\$', r'\1', spec)
+        spec = re.sub(r'\$\\mapsto\$', r'->', spec)
+        
+        protocols = load(spec)
+
+        for protocol in protocols:
+            print("%s (%s): " % (protocol.name, args.input))
+            print("  Enactable: ", protocol.is_enactable())
+            print("  Live: ", protocol.is_live())
+            print("  Safe: ", protocol.is_safe())
+            print("  Atomic: ", protocol.is_atomic())
+
+        if not protocols:
+            print("No protocols parsed from file: ", args.input)
