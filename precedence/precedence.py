@@ -49,7 +49,7 @@ def simultaneous(a, b, *rest):
         return and_(*pairwise(simultaneous, args))
     
     a,b = sorted((a,b)) #make sure we always use pairs in the same order
-    return var(a+"*"+b)
+    return var(a+ "*" +b)
 
 @wrap(var)
 def ordered(*args):
@@ -121,4 +121,4 @@ def consistent(*statements):
                       transitivity(*es))
         clauses.append(clause)
     formula = and_(and_(*clauses), *statements)
-    return formula.tseytin(aux)
+    return formula
