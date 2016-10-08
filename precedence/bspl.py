@@ -69,7 +69,7 @@ class Protocol(Base):
 
     @property
     def all_parameters(self):
-        return flatten([m.parameters.values() for m in self.messages])
+        return flatten([m.parameters.values() for m in self.messages.values()])
 
     def _adorned(self, adornment):
         "helper method for selecting parameters with a particular adornment"
@@ -101,32 +101,52 @@ class Protocol(Base):
         #prove there are no unsafe enactments
         return not consistent(self.unsafe).sat()[0]
 
-    def is_atomic(self):
+    def check_atomicity(self):
         for r in self.references:
             if isinstance(r, Message):
                 continue
-            elif not consistent(and_(self.correct,
-                                    self.maximal,
-                                    r.begin,
-                                    ~r.complete)).sat()[0]:
-                return False
-        return True
+            else:
+                expr = consistent(and_(self.correct,
+                                       self.maximal,
+                                       r.begin, ~r.complete))
+                s = expr.sat()[1]
+                if s:
+                    return s
+        return None
+
+    def is_atomic(self):
+        return not self.check_atomicity()
+
+    @property
+    def cover(self):
+        c = {}
+        for p in self.outs:
+            alts = []
+            for m in self.messages.values():
+                if p.adornment(m) == 'out':
+                    alts.append(m)
+            if alts:
+                c[p] = alts
+        return c
 
     @property
     def unsafe(self):
         clauses = []
-        for p in self.parameters.values():
+        for p in self.all_parameters:
             if p.messages.get('out', None) and len(p.messages['out']) > 1:
+                alts = []
+                for r in self.roles.values():
+                    #we assume that an agent can choose between alternative messages
+                    alts.append(or_(*[m.sent for m in p.messages['out'] if m.sender == r]))
                 #at most one message producing this parameter can be observed at once
                 #negate to prove it is impossible to break
-                clauses.append(~onehot0(*[m.sent for m in p.messages['out']]))
+                clauses.append(~onehot0(*alts))
         if clauses:
             #at least one conflict
             return and_(self.correct, *clauses)
         else:
             #no conflicting pairs; automatically safe -> not unsafe
             return bx.ZERO
-
 
     @property
     def enactable(self):
@@ -143,10 +163,12 @@ class Protocol(Base):
     @property
     def correct(self):
         clauses = []
+        for p in self.outs:
+            clauses.append(p.origination(self))
         for m in self.messages.values():
-            clauses.append(and_(m.transmission, m.emission, m.reception))
+            clauses.append(and_(m.emission, m.reception, m.delivered))
         for r in self.roles.values():
-            clauses.append(and_(r.ordering, r.minimality))
+            clauses.append(and_(r.ordering(self), r.minimality(self)))
         return and_(*clauses)
 
     @property
@@ -154,7 +176,6 @@ class Protocol(Base):
         "Each message must be sent, or it must be blocked by a prior binding"
         clauses = []
         for m in self.messages.values():
-            clauses.append(m.delivered)
             clauses.append(m.sent | m.blocked)
         return and_(*clauses)
 
@@ -166,10 +187,10 @@ class Protocol(Base):
     def complete(self):
         "Each out parameter must be observed by at least one role"
         clauses = []
-        for p in self.outs:
+        for p,ms in self.cover.items():
             alts = []
-            for role in self.roles:
-                alts.append(observe(role, p))
+            for m in ms:
+                alts.append(m.received)
             clauses.append(or_(*alts))
         return and_(*clauses)
 
@@ -202,6 +223,7 @@ class Message(Protocol):
     @property
     def transmission(self):
         "A message must be sent before it can be received"
+        #currently not used, because consistent() doesn't compare timelines across agents
         return ~self.received | sequential(self.sent, self.received)
 
     @property
@@ -222,37 +244,38 @@ class Message(Protocol):
         clauses = [or_(~self.received,
                       sequential(p, self.received),
                       simultaneous(p, self.received))
-               for p in map(partial(observe, self.recipient), self.ins.union(self.outs))]
+                   for p in map(partial(observe, self.recipient), self.ins)]
+        clauses.extend([or_(~self.received, simultaneous(p, self.received))
+                        for p in map(partial(observe, self.recipient), self.outs)])
         return and_(*clauses)
 
 class Role(Base):
-    @property
-    def messages(self):
-        return {m.name:m for m in self.parent.messages.values()
+    def messages(self, protocol):
+        return {m.name:m for m in protocol.messages.values()
                 if m.sender == self or m.recipient == self}
 
     def observe(self, msg):
         return observe(self.name, msg)
 
-    @property
-    def minimality(self):
+    def sent_messages(self, protocol):
+        return [m for m in protocol.messages.values() if m.sender == self]
+
+    def minimality(self, protocol):
         "Every parameter observed by a role must have a corresponding message transmission or reception"
         sources = {}
-        for m in self.messages.values():
-            if m.sender == self:
-                for p in m.ins.union(m.outs):
-                    if p in sources:
-                        sources[p].append(m)
-                    else:
-                        sources[p] = [m]
+        for m in self.sent_messages(protocol):
+            for p in m.ins.union(m.outs):
+                if p in sources:
+                    sources[p].append(m)
+                else:
+                    sources[p] = [m]
 
         return and_(*[impl(self.observe(p),
                              or_(*[self.observe(m) for m in sources[p]]))
                      for p in sources])
 
-    @property
-    def ordering(self):
-        msgs = [m.sent for m in self.parent.messages.values() if m.sender == self]
+    def ordering(self, protocol):
+        msgs = [m.sent for m in protocol.messages.values() if m.sender == self]
         if len(msgs) > 1:
             return ordered(*msgs)
         else:
@@ -283,6 +306,13 @@ class Parameter(Base):
 
     def adornment(self, parent):
         return self.instances.get(parent, {}).get('adornment')
+
+    def observed(self, protocol):
+        return impl(observe('', self.name), or_(*[r.observe(self.name) for r in protocol.roles.values()]))
+
+    def origination(self, protocol):
+        "Any parameter not declared [in] for the protocol must have been bound by a message as an 'out'"
+        return impl(self.observed(protocol), or_(*[s.sent for s in self.messages['out']]))
 
 @wrap(name)
 def observe(role, event):
@@ -323,11 +353,30 @@ if __name__ == "__main__":
         protocols = load(spec)
 
         for protocol in protocols:
-            print("%s (%s): " % (protocol.name, args.input))
-            print("  Enactable: ", protocol.is_enactable())
-            print("  Live: ", protocol.is_live())
-            print("  Safe: ", protocol.is_safe())
-            print("  Atomic: ", protocol.is_atomic())
+            print("\n%s (%s): " % (protocol.name, args.input))
+
+            e = protocol.is_enactable()
+            print("  Enactable: ", e)
+            if not e:
+                print(protocol.enactable)
+
+            l = protocol.is_live()
+            print("  Live: ", l)
+            if not l:
+                print("\nFormula:\n ", protocol.dead_end)
+                print("\nViolation:\n ", [k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
+
+            expr = protocol.unsafe
+            us = consistent(expr).sat()[1]
+            print("  Safe: ", not us)
+            if us:
+                print("\nFormula:\n ", expr)
+                print("\nViolation:\n ", [k for k,v in us.items() if v])
+
+            a = protocol.check_atomicity()
+            print("  Atomic: ", not a)
+            if a:
+                print("\nViolation:\n ", [k for k,v in a.items() if v])
 
         if not protocols:
             print("No protocols parsed from file: ", args.input)
