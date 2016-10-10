@@ -164,7 +164,7 @@ class Protocol(Base):
     def correct(self):
         clauses = []
         for p in self.outs:
-            clauses.append(p.origination(self))
+            clauses.append(and_(p.observation(self), p.origination(self)))
         for m in self.messages.values():
             clauses.append(and_(m.emission, m.reception, m.delivered))
         for r in self.roles.values():
@@ -307,12 +307,16 @@ class Parameter(Base):
     def adornment(self, parent):
         return self.instances.get(parent, {}).get('adornment')
 
-    def observed(self, protocol):
-        return impl(observe('', self.name), or_(*[r.observe(self.name) for r in protocol.roles.values()]))
+    @property
+    def observed(self):
+        return observe('', self.name)
+
+    def observation(self, protocol):
+        return eq(self.observed, or_(*[r.observe(self.name) for r in protocol.roles.values()]))
 
     def origination(self, protocol):
         "Any parameter not declared [in] for the protocol must have been bound by a message as an 'out'"
-        return impl(self.observed(protocol), or_(*[s.sent for s in self.messages['out']]))
+        return impl(self.observed, or_(*[s.sent for s in self.messages['out']]))
 
 @wrap(name)
 def observe(role, event):
