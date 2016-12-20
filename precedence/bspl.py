@@ -324,6 +324,11 @@ def observe(role, event):
 
 send = observe
 recv = observe
+def strip_latex(spec):
+    spec = re.sub(r'\$\\msf{(\w+)}\$', r'\1', spec)
+    spec = re.sub(r'\$\\mapsto\$', r'->', spec)
+    return spec
+
 
 def transmission(msg, sender, recipient):
     "A message must be sent before it can be received"
@@ -352,9 +357,8 @@ if __name__ == "__main__":
 
     with open(args.input) as file:
         spec = file.read()
-        spec = re.sub(r'\$\\msf{(\w+)}\$', r'\1', spec)
-        spec = re.sub(r'\$\\mapsto\$', r'->', spec)
-        
+        spec = strip_latex(spec)
+
         protocols = load(spec)
 
         for protocol in protocols:
