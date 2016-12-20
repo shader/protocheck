@@ -4,23 +4,22 @@ from functools import partial
 import itertools
 import configargparse
 import re
+import pprint
+pp = pprint.PrettyPrinter()
 
 def flatten(nested):
     return list(itertools.chain.from_iterable(nested))
 
-class Registered(type):
-    _registry = {}
-    def __call__(cls, schema, parent=None, *args, **kwargs):
-        name = schema['name'] if isinstance(schema, dict) else schema
+class Specification():
+    def __init__(self, protocols):
+        self.protocols = [Protocol(p, self) for p in protocols]
 
-        if name not in cls._registry:
-            cls._registry[name] = super(Registered, cls).__call__(schema, parent, *args, **kwargs)
+def load(definition):
+    parser = BsplParser(parseinfo=False)
+    protocols = parser.parse(definition, rule_name='document')
+    return Specification(protocols)
 
-        obj = cls._registry[name]
-        obj.new_instance(schema, parent)
-        return obj
-
-class Base(metaclass=Registered):
+class Base():
     def __init__(self, schema, parent):
         self.schema = schema
         self.parent = parent
@@ -37,21 +36,13 @@ class Base(metaclass=Registered):
     def type(self):
         return self.schema['type']
 
-    def new_instance(self, schema, parent):
-        pass
-
 def reference(schema, parent):
     if schema["type"] == "message":
         return Message(schema, parent)
     elif schema["type"] == "protocol":
-        return Protocol(schema, parent)
+        return Reference(schema, parent)
     else:
         raise Exception("Unknown reference type: " + schema["type"])
-
-def load(definition):
-    parser = BsplParser(parseinfo=False)
-    protocols = parser.parse(definition, rule_name='document')
-    return [Protocol(p, None) for p in protocols]
 
 class Protocol(Base):
     def __init__(self, schema, parent=None):
@@ -95,8 +86,8 @@ class Protocol(Base):
         return consistent(and_(self.correct, self.enactable)).sat()[0]
             
     def is_live(self):
-        return self.is_enactable() and not consistent(self.dead_end).sat()[0]
-
+        return self.is_enactable() and not consistent(self.dead_end.restrict({var('B:Start'):1, var('B:Cancel'):1, var('B:Done'):1})).sat()[0]
+    
     def is_safe(self):
         #prove there are no unsafe enactments
         return not consistent(self.unsafe).sat()[0]
@@ -106,9 +97,10 @@ class Protocol(Base):
             if isinstance(r, Message):
                 continue
             else:
-                expr = consistent(and_(self.correct,
-                                       self.maximal,
-                                       r.begin, ~r.complete))
+                expr = consistent(and_s(self.correct,
+                                        self.maximal,
+                                        r.begin,
+                                        ~r.complete))
                 s = expr.sat()[1]
                 if s:
                     return s
@@ -159,17 +151,18 @@ class Protocol(Base):
     @property
     def dead_end(self):
         return and_(self.correct, self.maximal, ~self.complete)
+    
 
     @property
     def correct(self):
         clauses = []
-        for p in self.outs:
+        for p in [o for m in self.messages.values() for o in m.outs]:
             clauses.append(and_(p.observation(self), p.origination(self)))
         for m in self.messages.values():
             clauses.append(and_(m.emission, m.reception, m.delivered))
         for r in self.roles.values():
             clauses.append(and_(r.ordering(self), r.minimality(self)))
-        return and_(*clauses)
+        return and_s(*clauses)
 
     @property
     def maximal(self):
@@ -193,6 +186,9 @@ class Protocol(Base):
                 alts.append(m.received)
             clauses.append(or_(*alts))
         return and_(*clauses)
+
+class Reference(Base):
+    pass
 
 class Message(Protocol):
     def __init__(self, schema, parent):
@@ -230,22 +226,23 @@ class Message(Protocol):
     def emission(self):
         """Sending a message must be preceded by observation of its ins,
            but cannot be preceded by observation of any nils"""
-        ins = [~self.sent | sequential(observe(self.sender, p), self.sent)
+        s = partial(observe, self.sender)
+        ins = [impl(self.sent, sequential(s(p), self.sent))
                for p in self.ins]
-        nils = [~self.sent | ~sequential(observe(self.sender, p), self.sent)
+        nils = [impl(and_(self.sent, s(p)), sequential(self.sent, s(p)))
                 for p in self.nils]
-        outs = [~self.sent | simultaneous(observe(self.sender, p), self.sent)
+        outs = [impl(self.sent, simultaneous(s(p), self.sent))
                 for p in self.outs]
-        return and_(and_(and_(*ins), *nils), *outs)
+        return and_s(*(ins + nils + outs))
 
     @property
     def reception(self):
         "Each message reception is accompanied by the observation of its parameters; either they are observed, or the message itself is not"
-        clauses = [or_(~self.received,
-                      sequential(p, self.received),
-                      simultaneous(p, self.received))
+        clauses = [impl(self.received,
+                        or_(sequential(p, self.received),
+                            simultaneous(p, self.received)))
                    for p in map(partial(observe, self.recipient), self.ins)]
-        clauses.extend([or_(~self.received, simultaneous(p, self.received))
+        clauses.extend([impl(self.received, simultaneous(p, self.received))
                         for p in map(partial(observe, self.recipient), self.outs)])
         return and_(*clauses)
 
@@ -271,7 +268,7 @@ class Role(Base):
                     sources[p] = [m]
 
         return and_(*[impl(self.observe(p),
-                             or_(*[self.observe(m) for m in sources[p]]))
+                           or_(*[self.observe(m) for m in sources[p]]))
                      for p in sources])
 
     def ordering(self, protocol):
@@ -324,30 +321,11 @@ def observe(role, event):
 
 send = observe
 recv = observe
+
 def strip_latex(spec):
     spec = re.sub(r'\$\\msf{(\w+)}\$', r'\1', spec)
     spec = re.sub(r'\$\\mapsto\$', r'->', spec)
     return spec
-
-
-def transmission(msg, sender, recipient):
-    "A message must be sent before it can be received"
-    return ~observe(recipient, msg) | sequential(observe(sender, msg), observe(recipient, msg))
-
-def dependencies(msg, sender):
-    "Sending a message must be preceded by observation of its ins, and occur simultaneous to observation of its outs"
-    ins = [~send(sender, msg) | sequential(observe(sender, p), send(sender, msg)) for p in msg.ins]
-    outs = [~send(sender, msg) | simultaneous(observe(sender, p), send(sender, msg)) for p in msg.outs]
-    return and_(and_(*ins), *outs)
-        
-def reception(msg, recipient):
-    "Each message reception is accompanied by the observation of its parameters; either they are observed, or the message itself is not"
-    r = recv(recipient, msg)
-    clauses = [bx.or_(~r,
-                  sequential(p, r),
-                  simultaneous(p, r))
-               for p in map(partial(observe, recipient), msg.parameters.values())]
-    return and_(*clauses)
 
 if __name__ == "__main__":
     parser = configargparse.get_argument_parser()
@@ -371,7 +349,7 @@ if __name__ == "__main__":
 
             l = protocol.is_live()
             print("  Live: ", l)
-            if not l:
+            if e and not l:
                 print("\nFormula:\n ", protocol.dead_end)
                 print("\nViolation:\n ", [k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
 

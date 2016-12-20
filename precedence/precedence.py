@@ -74,9 +74,9 @@ def causal(event, causes):
 def timeline(*events):
     "A timeline is linear, and allows only a single relationship between each pair of events; a>b, b>a, or a*b"
     return and_(
-        *pairwise(lambda a,b: ~a | ~b | onehot(simultaneous(a,b),
+        *pairwise(lambda a,b: impl(a & b, onehot(simultaneous(a,b),
                                                sequential(a,b),
-                                               sequential(b,a)), events)
+                                               sequential(b,a))), events)
     )
 
 @wrap(var)
@@ -97,9 +97,14 @@ def transitive(fn):
 
 def transitivity(*events):
     "Simultanaeity and sequentiality are transitive properties"
+    clauses = []
     sim = transitive(simultaneous)
     seq = transitive(sequential)
-    return and_(*flatten([sim(*tup) + seq(*tup) for tup in permutations(events, 3)]))
+
+    clauses.extend([sim(*tup) for tup in combinations(events, 3)])
+    clauses.extend([seq(*tup) for tup in permutations(events, 3)])
+
+    return and_s(*clauses)
 
 def extract_events(*statements):
     inputs = flatten([s.support() for s in statements])
@@ -114,6 +119,11 @@ def group_events(events):
         else:
             grouped[role] = [e]
     return grouped
+
+def consistency(*events):
+    return and_(timeline(*events),
+                occurrence(*events),
+                transitivity(*events))
 
 def consistent(*statements):
     events = extract_events(*statements)
