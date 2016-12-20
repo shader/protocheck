@@ -12,7 +12,7 @@ def flatten(nested):
 
 class Specification():
     def __init__(self, protocols):
-        self.protocols = [Protocol(p, self) for p in protocols]
+        self.protocols = {Protocol(p, self) for p in protocols}
 
 def load(definition):
     parser = BsplParser(parseinfo=False)
@@ -20,13 +20,11 @@ def load(definition):
     return Specification(protocols)
 
 class Base():
+    """Class containing elements common to protocols, messages, etc."""
+
     def __init__(self, schema, parent):
         self.schema = schema
         self.parent = parent
-
-    @classmethod
-    def reset_registry(cls):
-        cls._registry = {}
 
     @property
     def name(self):
@@ -49,13 +47,8 @@ class Protocol(Base):
         super().__init__(schema, parent)
 
         self.parameters = {p['name']: Parameter(p, self) for p in schema['parameters']}
-        
         self.keys = {p for p in self.parameters.values() if p.key}
-        if parent:
-            self.keys.update(parent.keys)
-
         self.roles = {r['name']: Role(r, self) for r in schema.get('roles', [])}
-
         self.references = [reference(r, self) for r in schema.get('references', [])]
 
     @property
@@ -323,6 +316,7 @@ send = observe
 recv = observe
 
 def strip_latex(spec):
+    """Remove all instances of '\mapsto' and '\msf{}' from a latex listing, to make it proper BSPL"""
     spec = re.sub(r'\$\\msf{(\w+)}\$', r'\1', spec)
     spec = re.sub(r'\$\\mapsto\$', r'->', spec)
     return spec
