@@ -1,0 +1,8 @@
+NilTest {
+  roles A, B
+  parameters out id key, out done
+
+  A -> B: Start[out id]
+  A -> B: Cancel[in id, out cancel]
+  B -> A: Done[in id, out done, nil cancel]
+}

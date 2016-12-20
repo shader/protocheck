@@ -1,8 +1,8 @@
 .PHONY: deps .venv
 
-parser: precedence/bspl.gr
-	cd precedence; grako -m Bspl bspl.gr >bspl_parser.py
-	cd precedence; grako -m Spl spl.gr >spl_parser.py
+parser: protocheck/bspl.gr
+	cd protocheck; grako -m Bspl bspl.gr >bspl_parser.py
+	cd protocheck; grako -m Spl spl.gr >spl_parser.py
 
 .venv:
 	if [ ! -e ".venv/bin/activate_this.py" ] ; then virtualenv --clear --python=python3.4 .venv ; fi

@@ -1,0 +1,7 @@
+NilTest2 {
+  roles A, B
+  parameters out a, out b
+
+  A -> B: One[out a, nil b]
+  B -> A: Two[nil a, out b]
+}

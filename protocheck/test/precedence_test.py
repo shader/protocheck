@@ -1,5 +1,5 @@
 import pytest
-from precedence.precedence import *
+from protocheck.precedence import *
 
 def test_occurrence():
     occ = occurrence(*extract_events(simultaneous('a', 'b')))

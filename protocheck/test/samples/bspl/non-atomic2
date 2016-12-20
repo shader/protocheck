@@ -1,0 +1,15 @@
+ReqRep {
+  roles C, S
+  parameters out id key, out rep, nil done
+
+C -> S: Request[out id, nil done]
+S -> C: Reply[in id, out rep, nil done]
+}
+
+Comp {
+  roles C, S
+  parameters out id key, out done
+
+  ReqRep(C, S, out id, out rep, nil done)
+  C -> S: Cancel[in id, out done]
+}

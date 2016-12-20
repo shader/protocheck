@@ -1,5 +1,5 @@
-from precedence.spl import *
-from precedence import precedence
+from protocheck.spl import *
+from protocheck import precedence
 
 Bid = Message({
     "type": "message",

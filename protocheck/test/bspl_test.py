@@ -1,10 +1,10 @@
 import pytest
-from precedence.bspl import *
-from precedence import precedence
+from protocheck.bspl import *
+from protocheck import precedence
 
 @pytest.fixture(scope="module")
 def Auction():
-    with open('precedence/test/samples/bspl/auction') as file:
+    with open('protocheck/test/samples/bspl/auction') as file:
         return load(file.read())[0]
 
 @pytest.fixture(scope="module")

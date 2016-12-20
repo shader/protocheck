@@ -11,7 +11,7 @@ if version < '2.2.3':
     DistributionMetadata.classifiers = None
     DistributionMetadata.download_url = None
 
-from precedence import __version__ as version
+from protocheck import __version__ as version
 
 def requireModules(moduleNames=None):
     import re
@@ -28,7 +28,7 @@ def requireModules(moduleNames=None):
     return moduleNames
 
 setup(
-    name='precedence',
+    name='protocheck',
     version=version,
 
     author='Samuel Christie',
@@ -45,5 +45,5 @@ setup(
 
     ]),
 
-    test_suite='precedence'
+    test_suite='protocheck'
 )

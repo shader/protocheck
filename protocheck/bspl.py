@@ -1,5 +1,5 @@
-from precedence.precedence import *
-from precedence.bspl_parser import BsplParser
+from protocheck.precedence import *
+from protocheck.bspl_parser import BsplParser
 from functools import partial
 import itertools
 import configargparse
