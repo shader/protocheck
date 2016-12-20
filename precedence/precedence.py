@@ -5,6 +5,12 @@ import boolexpr as bx
 from boolexpr import *
 from itertools import combinations, permutations, chain
 import re
+import configargparse
+
+p = configargparse.get_argument_parser()
+p.add("-t", "--tseytin", action="store_true")
+p.add("-g", "--group-events", action="store_true")
+options = p.parse_known_args()
 
 ctx = bx.Context()
 aux = bx.Context()
@@ -111,14 +117,19 @@ def group_events(events):
 
 def consistent(*statements):
     events = extract_events(*statements)
-    groups = group_events(events)
 
     clauses = []
-    for role in groups:
-        es = groups[role]
-        clause = and_(timeline(*es),
-                      occurrence(*es),
-                      transitivity(*es))
-        clauses.append(clause)
-    formula = and_(and_(*clauses), *statements)
+    if options.group_events:
+        groups = group_events(events)
+
+        for role in groups:
+            es = groups[role]
+            clause = consistency(*es)
+            clauses.append(clause)
+    else:
+        clauses.append(consistency(*events))
+
+    formula = and_(*(clauses + list(statements)))
+    if options.tseytin:
+        formula = formula.tseytin(aux)
     return formula

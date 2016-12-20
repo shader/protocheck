@@ -3,3 +3,4 @@ pycosat
 pytest
 grako
 boolexpr
+configargparse

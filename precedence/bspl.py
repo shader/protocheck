@@ -2,7 +2,7 @@ from precedence.precedence import *
 from precedence.bspl_parser import BsplParser
 from functools import partial
 import itertools
-import argparse
+import configargparse
 import re
 
 def flatten(nested):
@@ -345,9 +345,10 @@ def reception(msg, recipient):
     return and_(*clauses)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='BSPL Protocol property checker')
-    parser.add_argument('-i','--input', help='Input file name',required=True)
-    args = parser.parse_args()
+    parser = configargparse.get_argument_parser()
+    parser.description = 'BSPL Protocol property checker'
+    parser.add('-i','--input', help='Input file name', required=True)
+    args = parser.parse()
 
     with open(args.input) as file:
         spec = file.read()
