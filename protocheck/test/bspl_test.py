@@ -1,11 +1,11 @@
 import pytest
 from protocheck.bspl import *
-from protocheck import precedence
+from protocheck import precedence, logic
 
 @pytest.fixture(scope="module")
 def Auction():
     with open('protocheck/test/samples/bspl/auction') as file:
-        return load(file.read())[0]
+        return load(file.read()).protocols['Auction']
 
 @pytest.fixture(scope="module")
 def A(Auction):
@@ -20,10 +20,11 @@ def Bid(Auction):
     return Auction.messages['Bid']
 
 def test_keys(Bid, Auction):
+    print(Auction.keys)
     assert [p.name for p in Auction.keys] == ["id"]
     #id explicitly declared key in P, but not message. Should still be considered a key
+    print(Bid.keys)
     assert len({p for p in Bid.keys}) == 2
-    assert Auction.parameters['id'] in Bid.keys
 
 def test_parameter(Bid, Auction):
     assert len(Bid.parameters.values()) > 0
@@ -58,7 +59,7 @@ def test_observe(Bid, A):
     assert str(observe(A, Bid)) == 'A:Bid'
 
 def test_transmission(Bid, A, B):
-    assert Bid.transmission.equiv(
+    assert logic.compile(Bid.transmission).equiv(
         or_(not_(observe(A,Bid)),
            sequential(observe(B, Bid),
                       observe(A, Bid))))
@@ -97,6 +98,7 @@ def test_begin(Auction):
     assert consistent(Auction.begin).sat()[1]
 
 def test_complete(Auction):
+    print(Auction.complete)
     assert Auction.complete
     assert consistent(Auction.complete).sat()[1]
 
