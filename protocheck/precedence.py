@@ -10,7 +10,7 @@ import configargparse
 p = configargparse.get_argument_parser()
 p.add("-t", "--tseytin", action="store_true")
 p.add("-g", "--group-events", action="store_true")
-options = p.parse_known_args()
+options = p.parse_known_args()[0] #apparently returns a tuple
 
 ctx = bx.Context()
 aux = bx.Context()
