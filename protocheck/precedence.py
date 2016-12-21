@@ -6,6 +6,7 @@ from boolexpr import *
 from itertools import combinations, permutations, chain
 import re
 import configargparse
+from protocheck import logic
 
 p = configargparse.get_argument_parser()
 p.add("-t", "--tseytin", action="store_true")
@@ -126,6 +127,8 @@ def consistency(*events):
                 transitivity(*events))
 
 def consistent(*statements):
+    statements = [logic.compile(s) for s in statements]
+
     events = extract_events(*statements)
 
     clauses = []
