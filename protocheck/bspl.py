@@ -1,3 +1,4 @@
+from protocheck import logic
 from protocheck.precedence import *
 from protocheck.bspl_parser import BsplParser
 from functools import partial
@@ -12,7 +13,21 @@ def flatten(nested):
 
 class Specification():
     def __init__(self, protocols):
-        self.protocols = {Protocol(p, self) for p in protocols}
+        self.protocols = {}
+        self.references = {}
+        self.type = 'specification'
+        for p in protocols:
+            proto = Protocol(p, self)
+            self.protocols[proto.name] = proto
+        for p in self.protocols.values():
+            if p not in self.references:
+                self.references[p] = set()
+            for r in p.references:
+                if r.type != 'protocol': continue
+                if r.name in self.protocols:
+                    self.references[p].add(self.protocols[r])
+                else:
+                    raise Exception("Reference to unknown protocol: " + r.name)
 
 def load(definition):
     parser = BsplParser(parseinfo=False)
@@ -34,20 +49,24 @@ class Base():
     def type(self):
         return self.schema['type']
 
+class Reference(Base):
+    pass
+
 def reference(schema, parent):
     if schema["type"] == "message":
         return Message(schema, parent)
     elif schema["type"] == "protocol":
         return Reference(schema, parent)
     else:
-        raise Exception("Unknown reference type: " + schema["type"])
+        raise Exception("Unknown type: " + schema["type"])
 
 class Protocol(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
 
         self.parameters = {p['name']: Parameter(p, self) for p in schema['parameters']}
-        self.keys = {p for p in self.parameters.values() if p.key}
+        self.keys = {p for p in self.parameters.values() \
+                     if p.key or parent.type=='protocol' and p.name in parent.parameters and parent.parameters[p.name].key}
         self.roles = {r['name']: Role(r, self) for r in schema.get('roles', [])}
         self.references = [reference(r, self) for r in schema.get('references', [])]
 
@@ -57,7 +76,7 @@ class Protocol(Base):
 
     def _adorned(self, adornment):
         "helper method for selecting parameters with a particular adornment"
-        return {p for p in self.parameters.values() if p.adornment(self) == adornment}
+        return {p for p in self.parameters.values() if p.adornment == adornment}
 
     @property
     def ins(self):
@@ -76,10 +95,11 @@ class Protocol(Base):
         return {k:v for r in self.references for k,v in r.messages.items()}
 
     def is_enactable(self):
-        return consistent(and_(self.correct, self.enactable)).sat()[0]
+        pp.pprint(logic.And(self.correct, self.enactable))
+        return consistent(logic.And(self.correct, self.enactable)).sat()[0]
             
     def is_live(self):
-        return self.is_enactable() and not consistent(self.dead_end.restrict({var('B:Start'):1, var('B:Cancel'):1, var('B:Done'):1})).sat()[0]
+        return self.is_enactable() and not consistent(self.dead_end).sat()[0]
     
     def is_safe(self):
         #prove there are no unsafe enactments
@@ -90,10 +110,10 @@ class Protocol(Base):
             if isinstance(r, Message):
                 continue
             else:
-                expr = consistent(and_s(self.correct,
-                                        self.maximal,
-                                        r.begin,
-                                        ~r.complete))
+                expr = consistent(logic.And(self.correct,
+                                      self.maximal,
+                                      r.begin,
+                                      r.incomplete))
                 s = expr.sat()[1]
                 if s:
                     return s
@@ -102,27 +122,24 @@ class Protocol(Base):
     def is_atomic(self):
         return not self.check_atomicity()
 
-    @property
-    def cover(self):
-        c = {}
-        for p in self.outs:
-            alts = []
-            for m in self.messages.values():
-                if p.adornment(m) == 'out':
-                    alts.append(m)
-            if alts:
-                c[p] = alts
-        return c
+    def cover(self, parameter):
+        if type(parameter) is not str: parameter = parameter.name
+        alts = []
+        for m in self.messages.values():
+            if parameter in m.parameters and m.parameters[parameter].adornment == 'out':
+                alts.append(m)
+        return alts
 
     @property
+    @logic.named
     def unsafe(self):
         clauses = []
         for p in self.all_parameters:
-            if p.messages.get('out', None) and len(p.messages['out']) > 1:
+            if len(self.cover(p.name)) > 1:
                 alts = []
                 for r in self.roles.values():
                     #we assume that an agent can choose between alternative messages
-                    alts.append(or_(*[m.sent for m in p.messages['out'] if m.sender == r]))
+                    alts.append(or_(*[m.sent for m in self.cover(p) if m.sender == r]))
                 #at most one message producing this parameter can be observed at once
                 #negate to prove it is impossible to break
                 clauses.append(~onehot0(*alts))
@@ -134,30 +151,33 @@ class Protocol(Base):
             return bx.ZERO
 
     @property
+    @logic.named
     def enactable(self):
         "It must be possible to bind each out parameter with at least one message"
         clauses = []
         for p in self.outs:
-            clauses.append(or_(*[m.sent for m in p.messages['out']]))
+            clauses.append(or_(*[m.sent for m in self.cover(p)]))
         return and_(*clauses)
 
     @property
+    @logic.named
     def dead_end(self):
-        return and_(self.correct, self.maximal, ~self.complete)
+        return logic.And(self.correct, self.maximal, self.incomplete)
     
-
     @property
+    @logic.named
     def correct(self):
         clauses = []
         for p in [o for m in self.messages.values() for o in m.outs]:
-            clauses.append(and_(p.observation(self), p.origination(self)))
+            clauses.append(logic.And(p.observation(self), p.origination(self)))
         for m in self.messages.values():
-            clauses.append(and_(m.emission, m.reception, m.delivered))
+            clauses.append(logic.And(m.emission, m.reception, m.delivered))
         for r in self.roles.values():
-            clauses.append(and_(r.ordering(self), r.minimality(self)))
-        return and_s(*clauses)
+            clauses.append(logic.And(r.ordering(self), r.minimality(self)))
+        return logic.And(*clauses)
 
     @property
+    @logic.named
     def maximal(self):
         "Each message must be sent, or it must be blocked by a prior binding"
         clauses = []
@@ -166,22 +186,26 @@ class Protocol(Base):
         return and_(*clauses)
 
     @property
+    @logic.named
     def begin(self):
         return or_(*[m.sent for m in self.messages.values()])
 
-    @property
-    def complete(self):
+    def _complete(self):
         "Each out parameter must be observed by at least one role"
         clauses = []
-        for p,ms in self.cover.items():
-            alts = []
-            for m in ms:
-                alts.append(m.received)
-            clauses.append(or_(*alts))
+        for p in self.outs:
+            clauses.append(or_(*[m.received for m in self.cover(p)]))
         return and_(*clauses)
 
-class Reference(Base):
-    pass
+    @property
+    @logic.named
+    def complete(self):
+        return self._complete()
+
+    @property
+    @logic.named
+    def incomplete(self):
+        return ~self._complete()
 
 class Message(Protocol):
     def __init__(self, schema, parent):
@@ -202,6 +226,7 @@ class Message(Protocol):
         return recv(self.recipient, self.name)
 
     @property
+    @logic.named
     def delivered(self):
         return impl(self.sent, self.received)
 
@@ -210,12 +235,14 @@ class Message(Protocol):
         return or_(*[observe(self.sender, p) for p in self.nils.union(self.outs)])
 
     @property
+    @logic.named
     def transmission(self):
         "A message must be sent before it can be received"
         #currently not used, because consistent() doesn't compare timelines across agents
         return ~self.received | sequential(self.sent, self.received)
 
     @property
+    @logic.named
     def emission(self):
         """Sending a message must be preceded by observation of its ins,
            but cannot be preceded by observation of any nils"""
@@ -229,6 +256,7 @@ class Message(Protocol):
         return and_s(*(ins + nils + outs))
 
     @property
+    @logic.named
     def reception(self):
         "Each message reception is accompanied by the observation of its parameters; either they are observed, or the message itself is not"
         clauses = [impl(self.received,
@@ -250,6 +278,7 @@ class Role(Base):
     def sent_messages(self, protocol):
         return [m for m in protocol.messages.values() if m.sender == self]
 
+    @logic.named
     def minimality(self, protocol):
         "Every parameter observed by a role must have a corresponding message transmission or reception"
         sources = {}
@@ -264,6 +293,7 @@ class Role(Base):
                            or_(*[self.observe(m) for m in sources[p]]))
                      for p in sources])
 
+    @logic.named
     def ordering(self, protocol):
         msgs = [m.sent for m in protocol.messages.values() if m.sender == self]
         if len(msgs) > 1:
@@ -275,38 +305,23 @@ class Parameter(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
         self.key = schema['key']
-        self.instances = {}
-        self.messages = {}
-
-        self.new_instance(schema, parent)
-
-    def new_instance(self, schema, parent):
-        self.instances[parent] = schema
-
-        if isinstance(parent, Message):
-            a = schema['adornment']
-            if a in self.messages:
-                self.messages[a].add(parent)
-            else:
-                self.messages[a] = {parent}
 
     @property
-    def sources(self):
-        return self.messages.get('in', set()).union(self.messages.get('out', set()))
-
-    def adornment(self, parent):
-        return self.instances.get(parent, {}).get('adornment')
+    def adornment(self):
+        return self.schema['adornment']
 
     @property
     def observed(self):
         return observe('', self.name)
 
+    @logic.named
     def observation(self, protocol):
         return eq(self.observed, or_(*[r.observe(self.name) for r in protocol.roles.values()]))
 
+    @logic.named
     def origination(self, protocol):
         "Any parameter not declared [in] for the protocol must have been bound by a message as an 'out'"
-        return impl(self.observed, or_(*[s.sent for s in self.messages['out']]))
+        return impl(self.observed, or_(*[s.sent for s in protocol.cover(self.name)]))
 
 @wrap(name)
 def observe(role, event):
