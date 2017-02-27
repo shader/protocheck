@@ -168,8 +168,6 @@ class Protocol(Base):
     @logic.named
     def correct(self):
         clauses = []
-        for p in [o for m in self.messages.values() for o in m.outs]:
-            clauses.append(logic.And(p.observation(self), p.origination(self)))
         for m in self.messages.values():
             clauses.append(logic.And(m.emission, m.reception, m.delivered))
         for r in self.roles.values():
@@ -245,7 +243,7 @@ class Message(Protocol):
     @logic.named
     def emission(self):
         """Sending a message must be preceded by observation of its ins,
-           but cannot be preceded by observation of any nils"""
+           but cannot be preceded by observation of any nils or outs"""
         s = partial(observe, self.sender)
         ins = [impl(self.sent, sequential(s(p), self.sent))
                for p in self.ins]
@@ -309,19 +307,6 @@ class Parameter(Base):
     @property
     def adornment(self):
         return self.schema['adornment']
-
-    @property
-    def observed(self):
-        return observe('', self.name)
-
-    @logic.named
-    def observation(self, protocol):
-        return eq(self.observed, or_(*[r.observe(self.name) for r in protocol.roles.values()]))
-
-    @logic.named
-    def origination(self, protocol):
-        "Any parameter not declared [in] for the protocol must have been bound by a message as an 'out'"
-        return impl(self.observed, or_(*[s.sent for s in protocol.cover(self.name)]))
 
 @wrap(name)
 def observe(role, event):
