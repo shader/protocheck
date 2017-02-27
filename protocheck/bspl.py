@@ -171,7 +171,7 @@ class Protocol(Base):
         for m in self.messages.values():
             clauses.append(logic.And(m.emission, m.reception, m.transmission))
         for r in self.roles.values():
-            clauses.append(logic.And(r.ordering(self), r.minimality(self)))
+            clauses.append(logic.And(r.nonsimultaneity(self), r.minimality(self)))
         return logic.And(*clauses)
 
     @property
@@ -286,7 +286,7 @@ class Role(Base):
                      for p in sources])
 
     @logic.named
-    def ordering(self, protocol):
+    def nonsimultaneity(self, protocol):
         msgs = [m.sent for m in protocol.messages.values() if m.sender == self]
         if len(msgs) > 1:
             return ordered(*msgs)
