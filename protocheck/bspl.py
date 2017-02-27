@@ -169,7 +169,7 @@ class Protocol(Base):
     def correct(self):
         clauses = []
         for m in self.messages.values():
-            clauses.append(logic.And(m.emission, m.reception, m.delivered))
+            clauses.append(logic.And(m.emission, m.reception, m.delivery))
         for r in self.roles.values():
             clauses.append(logic.And(r.ordering(self), r.minimality(self)))
         return logic.And(*clauses)
@@ -225,7 +225,8 @@ class Message(Protocol):
 
     @property
     @logic.named
-    def delivered(self):
+    def delivery(self):
+        "If a message is sent, it will be received"
         return impl(self.sent, self.received)
 
     @property
