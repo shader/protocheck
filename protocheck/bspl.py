@@ -169,7 +169,7 @@ class Protocol(Base):
     def correct(self):
         clauses = []
         for m in self.messages.values():
-            clauses.append(logic.And(m.emission, m.reception, m.delivery))
+            clauses.append(logic.And(m.emission, m.reception, m.transmission))
         for r in self.roles.values():
             clauses.append(logic.And(r.ordering(self), r.minimality(self)))
         return logic.And(*clauses)
@@ -224,21 +224,14 @@ class Message(Protocol):
         return recv(self.recipient, self.name)
 
     @property
-    @logic.named
-    def delivery(self):
-        "If a message is sent, it will be received"
-        return impl(self.sent, self.received)
-
-    @property
     def blocked(self):
         return or_(*[observe(self.sender, p) for p in self.nils.union(self.outs)])
 
     @property
     @logic.named
     def transmission(self):
-        "A message must be sent before it can be received"
-        #currently not used, because consistent() doesn't compare timelines across agents
-        return ~self.received | sequential(self.sent, self.received)
+        "Each message emission corresponds exactly to a reception"
+        return eq(self.send, self.received)
 
     @property
     @logic.named
