@@ -212,8 +212,8 @@ class Protocol(Base):
 class Message(Protocol):
     def __init__(self, schema, parent):
         super().__init__(schema, parent)
-        self.sender = Role({"name": schema['sender']}, parent)
-        self.recipient = Role({"name": schema['recipient']}, parent)
+        self.sender = parent.roles.get(schema['sender'])
+        self.recipient = parent.roles.get(schema['recipient'])
 
     @property
     def messages(self):
