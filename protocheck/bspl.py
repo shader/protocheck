@@ -229,7 +229,10 @@ class Message(Protocol):
 
     @property
     def blocked(self):
-        return or_(*[observe(self.sender, p) for p in self.nils.union(self.outs)])
+        s = partial(observe, self.sender)
+        nils = [and_(s(p), ~(sequential(s(p), self.sent) | simultaneous(s(p), self.sent))) for p in self.nils]
+        outs = [s(p) for p in self.outs]
+        return or_(*(nils + outs))
 
     @property
     @logic.named
