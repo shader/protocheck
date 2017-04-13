@@ -28,6 +28,8 @@ class Specification():
                     self.references[p].add(self.protocols[r.name])
                 else:
                     raise Exception("Reference to unknown protocol: " + r.name)
+        for p in self.protocols.values():
+            p.resolve_references(self)
 
 def load(definition):
     parser = BsplParser(parseinfo=False)
@@ -69,6 +71,9 @@ class Protocol(Base):
                      if p.key or parent.type=='protocol' and p.name in parent.parameters and parent.parameters[p.name].key}
         self.roles = {r['name']: Role(r, self) for r in schema.get('roles', [])}
         self.references = [reference(r, self) for r in schema.get('references', [])]
+
+    def resolve_references(self, spec):
+        self.references = [spec.protocols.get(r.name) or r for r in self.references]
 
     @property
     def all_parameters(self):
