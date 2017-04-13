@@ -25,7 +25,7 @@ class Specification():
             for r in p.references:
                 if r.type != 'protocol': continue
                 if r.name in self.protocols:
-                    self.references[p].add(self.protocols[r])
+                    self.references[p].add(self.protocols[r.name])
                 else:
                     raise Exception("Reference to unknown protocol: " + r.name)
 
