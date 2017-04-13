@@ -93,7 +93,9 @@ flatten = chain.from_iterable
 
 def transitive(fn):
     def inner(a,b,c):
-        return impl(fn(a,b) & fn(b,c), fn(a,c))
+        return and_(impl(fn(a,b) & fn(b,c), fn(a,c)),
+                    impl(simultaneous(a,b) & fn(b,c), fn(a,c)),
+                    impl(fn(a,b) & simultaneous(b,c), fn(a,c)))
     return inner
 
 def transitivity(*events):
