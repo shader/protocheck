@@ -67,10 +67,6 @@ def test_transmission(Bid, A, B):
 def test_reception(Bid, B):
     assert precedence.consistent(Bid.reception).sat()[0]
 
-def test_role_ordering(A, Auction):
-    assert A.ordering
-    assert consistent(A.ordering(Auction))
-
 def test_role_messages(A):
     assert A.messages
 
