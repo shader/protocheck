@@ -5,7 +5,7 @@ parser: protocheck/bspl.gr
 	cd protocheck; grako -m Spl spl.gr >spl_parser.py
 
 .venv:
-	if [ ! -e ".venv/bin/activate_this.py" ] ; then virtualenv --clear --python=python3.4 .venv ; fi
+	if [ ! -e ".venv/bin/activate_this.py" ] ; then virtualenv --clear --python=python3.5 .venv ; fi
 	. .venv/bin/activate && pip install --upgrade pip
 
 deps: .venv requirements.txt
