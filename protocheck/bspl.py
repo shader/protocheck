@@ -235,7 +235,8 @@ class Message(Protocol):
     @logic.named
     def transmission(self):
         "Each message emission corresponds exactly to a reception"
-        return eq(self.send, self.received)
+        return and_(eq(self.sent, self.received),
+                    impl(self.sent, sequential(self.sent, self.received)))
 
     @property
     @logic.named
