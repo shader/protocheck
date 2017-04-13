@@ -282,12 +282,18 @@ class Role(Base):
     def minimality(self, protocol):
         "Every parameter observed by a role must have a corresponding message transmission or reception"
         sources = {}
-        for m in self.sent_messages(protocol):
-            for p in m.ins.union(m.outs):
-                if p in sources:
-                    sources[p].append(m)
-                else:
-                    sources[p] = [m]
+        def add(m, p):
+            if p in sources:
+                sources[p].append(m)
+            else:
+                sources[p] = [m]
+
+        for m in self.messages(protocol).values():
+            if m.recipient == self:
+                for p in m.ins:
+                    add(m, p)
+            for p in m.outs:
+                add(m, p)
 
         return and_(*[impl(self.observe(p),
                            or_(*[self.observe(m) for m in sources[p]]))
