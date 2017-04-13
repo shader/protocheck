@@ -100,7 +100,6 @@ class Protocol(Base):
         return {k:v for r in self.references for k,v in r.messages.items()}
 
     def is_enactable(self):
-        pp.pprint(logic.And(self.correct, self.enactable))
         return consistent(logic.And(self.correct, self.enactable)).sat()[0]
             
     def is_live(self):
