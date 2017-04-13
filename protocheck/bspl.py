@@ -6,6 +6,8 @@ import itertools
 import configargparse
 import re
 import pprint
+import json
+import textwrap
 pp = pprint.PrettyPrinter()
 
 def flatten(nested):
@@ -333,39 +335,60 @@ if __name__ == "__main__":
     parser = configargparse.get_argument_parser()
     parser.description = 'BSPL Protocol property checker'
     parser.add('-i','--input', help='Input file name', required=True)
+    parser.add('-p','--print-protocol', action="store_true",
+               help='Print protocol specification')
+    parser.add('-e','--print-enactability', action="store_true",
+               help='Print enactment that satisfies enactability')
     args = parser.parse()
 
     with open(args.input) as file:
-        spec = file.read()
-        spec = strip_latex(spec)
+        raw = file.read()
+        raw = strip_latex(raw)
 
-        protocols = load(spec)
+        spec = load(raw)
 
-        for protocol in protocols:
+        if args.print_protocol:
+            print(raw)
+
+        for protocol in spec.protocols.values():
             print("\n%s (%s): " % (protocol.name, args.input))
 
+            if args.print_enactability:
+                print(json.dumps(logic.And(protocol.correct, protocol.enactable), default=str, sort_keys=True, indent=2))
             e = protocol.is_enactable()
             print("  Enactable: ", e)
             if not e:
-                print(protocol.enactable)
+                print("    Formula:")
+                print(json.dumps(logic.And(protocol.correct, protocol.enactable), default=str, sort_keys=True, indent=2))
+                print()
+            elif args.print_enactability:
+                pp.pprint([k for k,v in consistent(logic.And(protocol.correct, protocol.enactable)).sat()[1].items() if v])
 
             l = protocol.is_live()
             print("  Live: ", l)
             if e and not l:
-                print("\nFormula:\n ", protocol.dead_end)
-                print("\nViolation:\n ", [k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
+                print("    Formula:")
+                print(json.dumps(protocol.dead_end, default=str, sort_keys=True, indent=2))
+                print("\n    Violation:")
+                pp.pprint([k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
+                print()
 
             expr = protocol.unsafe
             us = consistent(expr).sat()[1]
             print("  Safe: ", not us)
             if us:
-                print("\nFormula:\n ", expr)
-                print("\nViolation:\n ", [k for k,v in us.items() if v])
+                print("\nFormula:")
+                print(json.dumps(expr))
+                print("\nViolation:")
+                pp.pprint([k for k,v in us.items() if v])
+                print()
 
             a = protocol.check_atomicity()
             print("  Atomic: ", not a)
             if a:
-                print("\nViolation:\n ", [k for k,v in a.items() if v])
+                print("\nViolation:")
+                pp.pprint([k for k,v in a.items() if v])
+                print()
 
-        if not protocols:
+        if not spec.protocols:
             print("No protocols parsed from file: ", args.input)
