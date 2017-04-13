@@ -146,10 +146,10 @@ class Protocol(Base):
                     alts.append(or_(*[m.sent for m in self.cover(p) if m.sender == r]))
                 #at most one message producing this parameter can be observed at once
                 #negate to prove it is impossible to break
-                clauses.append(~onehot0(*alts))
+                clauses.append(logic.Name(~onehot0(*alts), p.name + "-cover"))
         if clauses:
             #at least one conflict
-            return and_(self.correct, *clauses)
+            return logic.And(self.correct, *clauses)
         else:
             #no conflicting pairs; automatically safe -> not unsafe
             return bx.ZERO
