@@ -112,17 +112,13 @@ class Protocol(Base):
         return not consistent(self.unsafe).sat()[0]
 
     def check_atomicity(self):
-        for r in self.references:
-            if isinstance(r, Message):
-                continue
-            else:
-                expr = consistent(logic.And(self.correct,
-                                      self.maximal,
-                                      r.begin,
-                                      r.incomplete))
-                s = expr.sat()[1]
-                if s:
-                    return s
+        for q,r in self.refp:
+            expr = consistent(logic.And(self.correct,
+                                        self.maximal,
+                                        r.enactable,
+                                        q.unenactable))
+            s = expr.sat()[1]
+            if s: return s
         return None
 
     def is_atomic(self):
@@ -130,34 +126,49 @@ class Protocol(Base):
 
     @property
     def refp(self):
-        refs = set()
-        for r in self.references:
-            if (self, r) not in refs:
-                refs.add((self, r))
-                refs.update(r.refp)
-        return refs
+        def recur(queue, pairs):
+            if not queue: return pairs
+            else:
+                q,r = queue.pop(0) #get first reference
+                if (q, r) not in pairs:
+                    pairs.add((q, r))
+                    return recur(queue + [(r,s) for s in r.references], pairs)
+                else:
+                    return recur(queue, pairs)
 
-    def cover(self, parameter):
+        return recur([(self,q) for q in self.references], set())
+
+    def p_cover(self, parameter):
         if type(parameter) is not str: parameter = parameter.name
         alts = []
         for m in self.messages.values():
-            if parameter in m.parameters and m.parameters[parameter].adornment == 'out':
+            if parameter in m.parameters:
                 alts.append(m)
         return alts
+
+    @property
+    @logic.named
+    def cover(self):
+        return logic.And(*[logic.Name(or_(*[m.received for m in self.p_cover(p)]),
+                                      p.name + "-cover")
+                           for p in self.parameters.values()])
 
     @property
     @logic.named
     def unsafe(self):
         clauses = []
         for p in self.all_parameters:
-            if len(self.cover(p.name)) > 1:
+            #only out parameters can have safety conflicts
+            sources = [m for m in self.p_cover(p.name)
+                       if m.parameters[p.name].adornment == 'out']
+            if len(sources) > 1:
                 alts = []
                 for r in self.roles.values():
                     #we assume that an agent can choose between alternative messages
-                    alts.append(or_(*[m.sent for m in self.cover(p) if m.sender == r]))
+                    alts.append(or_(*[m.sent for m in sources if m.sender == r]))
                 #at most one message producing this parameter can be observed at once
                 #negate to prove it is impossible to break
-                clauses.append(logic.Name(~onehot0(*alts), p.name + "-cover"))
+                clauses.append(logic.Name(~onehot0(*alts), p.name + "-unsafe"))
         if clauses:
             #at least one conflict
             return logic.And(self.correct, *clauses)
@@ -165,14 +176,22 @@ class Protocol(Base):
             #no conflicting pairs; automatically safe -> not unsafe
             return bx.ZERO
 
+    def _enactable(self):
+        "Some message must be received containing each parameter"
+        clauses = []
+        for p in self.parameters:
+            clauses.append(or_(*[m.received for m in self.p_cover(p)]))
+        return and_(*clauses)
+
     @property
     @logic.named
     def enactable(self):
-        "It must be possible to bind each out parameter with at least one message"
-        clauses = []
-        for p in self.outs:
-            clauses.append(or_(*[m.sent for m in self.cover(p)]))
-        return and_(*clauses)
+        return self._enactable()
+
+    @property
+    @logic.named
+    def unenactable(self):
+        return ~self._enactable()
 
     @property
     @logic.named
@@ -207,7 +226,7 @@ class Protocol(Base):
         "Each out parameter must be observed by at least one role"
         clauses = []
         for p in self.outs:
-            clauses.append(or_(*[m.received for m in self.cover(p)]))
+            clauses.append(or_(*[m.received for m in self.p_cover(p)]))
         return and_(*clauses)
 
     @property
@@ -237,6 +256,16 @@ class Message(Protocol):
     @property
     def received(self):
         return recv(self.recipient, self.name)
+
+    @property
+    @logic.named
+    def enactable(self):
+        return self.received
+
+    @property
+    @logic.named
+    def unenactable(self):
+        return ~self.received
 
     @property
     def blocked(self):
