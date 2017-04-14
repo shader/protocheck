@@ -209,7 +209,7 @@ class Protocol(Base):
     def correct(self):
         clauses = []
         for m in self.messages.values():
-            clauses.append(logic.And(m.emission, m.reception, m.transmission))
+            clauses.append(logic.And(m.emission, m.reception, m.transmission, m.non_lossy))
         for r in self.roles.values():
             clauses.append(logic.And(r.nonsimultaneity(self), r.minimality(self)))
         return logic.And(*clauses)
@@ -284,9 +284,14 @@ class Message(Protocol):
     @property
     @logic.named
     def transmission(self):
-        "Each message emission corresponds exactly to a reception"
-        return and_(eq(self.sent, self.received),
-                    impl(self.sent, sequential(self.sent, self.received)))
+        "Each message reception is causally preceded by its emission"
+        return impl(self.received, sequential(self.sent, self.received))
+
+    @property
+    @logic.named
+    def non_lossy(self):
+        "Each message emission results in reception"
+        return impl(self.sent, self.received)
 
     @property
     @logic.named
