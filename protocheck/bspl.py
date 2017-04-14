@@ -128,6 +128,15 @@ class Protocol(Base):
     def is_atomic(self):
         return not self.check_atomicity()
 
+    @property
+    def refp(self):
+        refs = set()
+        for r in self.references:
+            if (self, r) not in refs:
+                refs.add((self, r))
+                refs.update(r.refp)
+        return refs
+
     def cover(self, parameter):
         if type(parameter) is not str: parameter = parameter.name
         alts = []

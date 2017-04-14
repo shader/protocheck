@@ -131,3 +131,7 @@ def test_protocol_safe(Auction):
 
 def test_protocol_is_atomic(Auction):
     assert Auction.is_atomic()
+
+def test_protocol_refp(Auction):
+    #only three simple messages in auction protocol
+    assert len(Auction.refp) == 3
