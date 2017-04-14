@@ -232,7 +232,8 @@ class Protocol(Base):
         "Each out parameter must be observed by at least one role"
         clauses = []
         for p in self.outs:
-            clauses.append(or_(*[m.received for m in self.p_cover(p)]))
+            clauses.append(or_(*[m.received for m in self.p_cover(p) \
+                                 if m.parameters[p.name].adornment is 'out']))
         return and_(*clauses)
 
     @property
