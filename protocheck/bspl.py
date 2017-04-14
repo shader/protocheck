@@ -111,6 +111,12 @@ class Protocol(Base):
         #prove there are no unsafe enactments
         return not consistent(self.unsafe).sat()[0]
 
+    def atomicity(self):
+        return [logic.And(self.correct,
+                          self.maximal,
+                          r.enactable,
+                          q.incomplete) for q,r in self.refp]
+
     def check_atomicity(self):
         for q,r in self.refp:
             expr = consistent(logic.And(self.correct,
@@ -380,6 +386,8 @@ if __name__ == "__main__":
                help='Print enactment that satisfies enactability')
     parser.add('-l','--print-liveness', action="store_true",
                help='Print liveness formula even if the check succeeds')
+    parser.add('-a','--print-atomicity', action="store_true",
+               help='Print atomicity formulas')
     args = parser.parse()
 
     with open(args.input) as file:
@@ -425,6 +433,9 @@ if __name__ == "__main__":
 
             a = protocol.check_atomicity()
             print("  Atomic: ", not a)
+            if args.print_atomicity:
+                print("\nFormula:")
+                print(json.dumps(protocol.atomicity(), default=str, sort_keys=True, indent=2))
             if a:
                 print("\nViolation:")
                 pp.pprint([k for k,v in a.items() if v])
