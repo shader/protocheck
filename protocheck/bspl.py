@@ -377,6 +377,8 @@ if __name__ == "__main__":
                help='Print protocol specification')
     parser.add('-e','--print-enactability', action="store_true",
                help='Print enactment that satisfies enactability')
+    parser.add('-l','--print-liveness', action="store_true",
+               help='Print liveness formula even if the check succeeds')
     args = parser.parse()
 
     with open(args.input) as file:
@@ -391,11 +393,9 @@ if __name__ == "__main__":
         for protocol in spec.protocols.values():
             print("\n%s (%s): " % (protocol.name, args.input))
 
-            if args.print_enactability:
-                print(json.dumps(logic.And(protocol.correct, protocol.enactable), default=str, sort_keys=True, indent=2))
             e = protocol.is_enactable()
             print("  Enactable: ", e)
-            if not e:
+            if not e or args.print_enactability:
                 print("    Formula:")
                 print(json.dumps(logic.And(protocol.correct, protocol.enactable), default=str, sort_keys=True, indent=2))
                 print()
@@ -404,9 +404,10 @@ if __name__ == "__main__":
 
             l = protocol.is_live()
             print("  Live: ", l)
-            if e and not l:
+            if e and not l or args.print_liveness:
                 print("    Formula:")
                 print(json.dumps(protocol.dead_end, default=str, sort_keys=True, indent=2))
+            if e and not l:
                 print("\n    Violation:")
                 pp.pprint([k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
                 print()
