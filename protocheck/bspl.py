@@ -344,7 +344,7 @@ class Role(Base):
                 add(m, p)
 
         return and_(*[impl(self.observe(p),
-                           or_(*[self.observe(m) for m in sources[p]]))
+                           or_(*[simultaneous(self.observe(m), self.observe(p)) for m in sources[p]]))
                      for p in sources])
 
     @logic.named
