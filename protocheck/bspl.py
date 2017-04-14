@@ -122,7 +122,7 @@ class Protocol(Base):
             expr = consistent(logic.And(self.correct,
                                         self.maximal,
                                         r.enactable,
-                                        q.unenactable))
+                                        q.incomplete))
             s = expr.sat()[1]
             if s: return s
         return None
