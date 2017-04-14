@@ -323,6 +323,7 @@ class Role(Base):
         "Every parameter observed by a role must have a corresponding message transmission or reception"
         sources = {}
         def add(m, p):
+            p = p.name
             if p in sources:
                 sources[p].append(m)
             else:
