@@ -83,7 +83,23 @@ class Protocol(Base):
         self.references = [reference(r, self) for r in schema.get('references', [])]
 
     def resolve_references(self, spec):
-        self.references = [spec.protocols.get(r.name) or r for r in self.references]
+        refs = []
+        for r in self.references:
+            protocol = spec.protocols.get(r.name)
+            if protocol:
+                refs.append(protocol.instance(spec,
+                                              [self.roles.get(role['name'])
+                                               for role in r.schema['params']]))
+            else:
+                refs.append(r.instance(self))
+        self.references = refs
+
+    def instance(self, spec, roles):
+        p = Protocol(self.schema, self.parent)
+        for i,r in enumerate(self.roles.values()):
+            p.roles[r.name] = roles[i]
+        p.resolve_references(spec)
+        return p
 
     @property
     def all_parameters(self):
@@ -127,16 +143,18 @@ class Protocol(Base):
 
     def check_atomicity(self):
         for q,r in self.refp:
-            expr = consistent(logic.And(self.correct,
-                                        self.maximal,
-                                        r.enactable,
-                                        q.incomplete))
+            formula = logic.And(self.correct,
+                                self.maximal,
+                                r.enactable,
+                                q.incomplete)
+            expr = consistent(formula)
             s = expr.sat()[1]
-            if s: return s
-        return None
+            if s: return s, formula
+        return None, None
 
     def is_atomic(self):
-        return not self.check_atomicity()
+        solution, _ = self.check_atomicity()
+        return not solution
 
     @property
     def refp(self):
@@ -259,6 +277,9 @@ class Message(Protocol):
         super().__init__(schema, parent)
         self.sender = parent.roles.get(schema['sender'])
         self.recipient = parent.roles.get(schema['recipient'])
+
+    def instance(self, parent):
+        return Message(self.schema, parent)
 
     @property
     def messages(self):
