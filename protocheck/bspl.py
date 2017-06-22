@@ -471,19 +471,21 @@ if __name__ == "__main__":
                help='Print liveness formula even if the check succeeds')
     parser.add('-a','--print-atomicity', action="store_true",
                help='Print atomicity formulas')
-    parser.add('-f','--filter', help='Only process protocols matching regexp')
+    parser.add('-f','--filter', default='.*', help='Only process protocols matching regexp')
     parser.add('input', nargs='+', help='Protocol description file(s)')
     args = parser.parse()
 
     for path in args.input:
         spec = load_file(path)
         for protocol in spec.protocols.values():
-            print("\n%s (%s): " % (protocol.name, path))
+            if re.match(args.filter, protocol.name):
+                print("\n%s (%s): " % (protocol.name, path))
 
-            handle_enactability(protocol, args)
-            handle_liveness(protocol,args)
-            handle_safeness(protocol,args)
-            handle_atomicity(protocol,args)
+                enactable = handle_enactability(protocol, args)
+                if enactable:
+                    handle_liveness(protocol,args)
+                handle_safeness(protocol,args)
+                handle_atomicity(protocol,args)
 
     if not spec.protocols:
         print("No protocols parsed from file: ", args.input)
