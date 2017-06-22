@@ -421,13 +421,15 @@ def handle_enactability(protocol, args):
     elif args.print_enactability:
         pp.pprint([k for k,v in consistent(logic.And(protocol.correct, protocol.enactable)).sat()[1].items() if v])
 
+    return e
+
 def handle_liveness(protocol, args):
     l = protocol.is_live()
     print("  Live: ", l)
-    if e and not l or args.print_liveness:
+    if not l or args.print_liveness:
         print("    Formula:")
         print(json.dumps(protocol.dead_end, default=str, sort_keys=True, indent=2))
-    if e and not l:
+    if not l:
         print("\n    Violation:")
         pp.pprint([k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
         print()
