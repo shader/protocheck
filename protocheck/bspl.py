@@ -390,70 +390,73 @@ def strip_latex(spec):
     spec = re.sub(r'\$\\mapsto\$', r'->', spec)
     return spec
 
+def handle_enactability(protocol, args):
+    e = protocol.is_enactable()
+    print("  Enactable: ", e)
+    if not e or args.print_enactability:
+        print("    Formula:")
+        print(json.dumps(logic.And(protocol.correct, protocol.enactable), default=str, sort_keys=True, indent=2))
+        print()
+    elif args.print_enactability:
+        pp.pprint([k for k,v in consistent(logic.And(protocol.correct, protocol.enactable)).sat()[1].items() if v])
+
+def handle_liveness(protocol, args):
+    l = protocol.is_live()
+    print("  Live: ", l)
+    if e and not l or args.print_liveness:
+        print("    Formula:")
+        print(json.dumps(protocol.dead_end, default=str, sort_keys=True, indent=2))
+    if e and not l:
+        print("\n    Violation:")
+        pp.pprint([k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
+        print()
+
+def handle_safeness(protocol, args):
+    expr = protocol.unsafe
+    us = consistent(expr).sat()[1]
+    print("  Safe: ", not us)
+    if us:
+        print("\nFormula:")
+        print(json.dumps(expr, default=str, sort_keys=True, indent=2))
+        print("\nViolation:")
+        pp.pprint([k for k,v in us.items() if v])
+        print()
+
+def handle_atomicity(protocol,args):
+    a, formula = protocol.check_atomicity()
+    print("  Atomic: ", not a)
+    if args.print_atomicity:
+        print("\nFormula:")
+        print(json.dumps(protocol.atomicity(), default=str, sort_keys=True, indent=2))
+    if a:
+        print("\nViolation:")
+        pp.pprint([k for k,v in a.items() if v])
+        print("\nFormula:")
+        print(json.dumps(formula, default=str, sort_keys=True, indent=2))
+        print()
+
 if __name__ == "__main__":
     parser = configargparse.get_argument_parser()
     parser.description = 'BSPL Protocol property checker'
-    parser.add('-i','--input', help='Input file name', required=True)
-    parser.add('-p','--print-protocol', action="store_true",
-               help='Print protocol specification')
     parser.add('-e','--print-enactability', action="store_true",
                help='Print enactment that satisfies enactability')
     parser.add('-l','--print-liveness', action="store_true",
                help='Print liveness formula even if the check succeeds')
     parser.add('-a','--print-atomicity', action="store_true",
                help='Print atomicity formulas')
+    parser.add('-f','--filter', help='Only process protocols matching regexp')
+    parser.add('input', nargs='+', help='Protocol description file(s)')
     args = parser.parse()
 
-    with open(args.input) as file:
-        raw = file.read()
-        raw = strip_latex(raw)
-
-        spec = load(raw)
-
-        if args.print_protocol:
-            print(raw)
-
+    for path in args.input:
+        spec = load_file(path)
         for protocol in spec.protocols.values():
-            print("\n%s (%s): " % (protocol.name, args.input))
+            print("\n%s (%s): " % (protocol.name, path))
 
-            e = protocol.is_enactable()
-            print("  Enactable: ", e)
-            if not e or args.print_enactability:
-                print("    Formula:")
-                print(json.dumps(logic.And(protocol.correct, protocol.enactable), default=str, sort_keys=True, indent=2))
-                print()
-            elif args.print_enactability:
-                pp.pprint([k for k,v in consistent(logic.And(protocol.correct, protocol.enactable)).sat()[1].items() if v])
+            handle_enactability(protocol, args)
+            handle_liveness(protocol,args)
+            handle_safeness(protocol,args)
+            handle_atomicity(protocol,args)
 
-            l = protocol.is_live()
-            print("  Live: ", l)
-            if e and not l or args.print_liveness:
-                print("    Formula:")
-                print(json.dumps(protocol.dead_end, default=str, sort_keys=True, indent=2))
-            if e and not l:
-                print("\n    Violation:")
-                pp.pprint([k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
-                print()
-
-            expr = protocol.unsafe
-            us = consistent(expr).sat()[1]
-            print("  Safe: ", not us)
-            if us:
-                print("\nFormula:")
-                print(json.dumps(expr))
-                print("\nViolation:")
-                pp.pprint([k for k,v in us.items() if v])
-                print()
-
-            a = protocol.check_atomicity()
-            print("  Atomic: ", not a)
-            if args.print_atomicity:
-                print("\nFormula:")
-                print(json.dumps(protocol.atomicity(), default=str, sort_keys=True, indent=2))
-            if a:
-                print("\nViolation:")
-                pp.pprint([k for k,v in a.items() if v])
-                print()
-
-        if not spec.protocols:
-            print("No protocols parsed from file: ", args.input)
+    if not spec.protocols:
+        print("No protocols parsed from file: ", args.input)
