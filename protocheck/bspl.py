@@ -276,7 +276,11 @@ class Message(Protocol):
     def __init__(self, schema, parent):
         super().__init__(schema, parent)
         self.sender = parent.roles.get(schema['sender'])
+        if not self.sender:
+            raise LookupError("Role not found", schema['sender'])
         self.recipient = parent.roles.get(schema['recipient'])
+        if not self.recipient:
+            raise LookupError("Role not found", schema['recipient'])
 
     def instance(self, parent):
         return Message(self.schema, parent)
