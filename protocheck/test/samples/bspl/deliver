@@ -1,0 +1,7 @@
+DeliverItem {
+  roles B, S, D // Buyer, Seller, Delivery service
+  parameters in item key, out delivered
+
+  S $\mapsto$ D: Ship[in item, out parcel]
+  D $\mapsto$ B: Deliver[in item, in parcel, out delivered]
+}

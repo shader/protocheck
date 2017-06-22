@@ -1,0 +1,9 @@
+Purchase {
+  $\msf{roles}$ B, S // Buyer, Seller
+  $\msf{parameters}$ out order key, out filled
+
+  B $\mapsto$ S: PlaceOrder[out order]
+  B $\mapsto$ S: Debit[in order, out payment]
+  B $\mapsto$ S: Credit[in order, out payment]
+  S $\mapsto$ B: FillOrder[in order, in payment, out filled]
+}

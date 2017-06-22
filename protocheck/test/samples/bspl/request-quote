@@ -1,0 +1,7 @@
+RequestQuote {
+  $\msf{roles}$ B, S //Buyer, Seller
+  $\msf{parameters}$ out ID key, out item, out price
+
+  B $\mapsto$ S: request [out ID, out item]
+  S $\mapsto$ B: quote [in ID, in item, out price]
+}
