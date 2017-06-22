@@ -38,6 +38,14 @@ def load(definition):
     protocols = parser.parse(definition, rule_name='document')
     return Specification(protocols)
 
+def load_file(path):
+    with open(path, 'r', encoding='utf8') as file:
+        raw = file.read()
+        raw = strip_latex(raw)
+
+        spec = load(raw)
+        return spec
+
 class Base():
     """Class containing elements common to protocols, messages, etc."""
 
