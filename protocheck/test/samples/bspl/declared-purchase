@@ -17,7 +17,7 @@ Credit {
 }
 
 DeclaredPurchase{
-  $\msf{roles}$ Buyer, S // Buyer, Seller
+  $\msf{roles}$ B, S // Buyer, Seller
   $\msf{parameters}$ out order key, out filled
 
   B $\mapsto$ S: PlaceOrder[out order]
