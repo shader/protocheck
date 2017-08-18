@@ -8,10 +8,9 @@ import re
 import configargparse
 from protocheck import logic
 
-p = configargparse.get_argument_parser()
-p.add("-t", "--tseytin", action="store_true")
-p.add("-g", "--group-events", action="store_true")
-options = p.parse_known_args()[0] #apparently returns a tuple
+arg_parser = configargparse.get_argument_parser()
+arg_parser.add("-t", "--tseytin", action="store_true")
+arg_parser.add("-g", "--group-events", action="store_true")
 
 ctx = bx.Context()
 aux = bx.Context()
@@ -129,6 +128,7 @@ def consistency(*events):
                 transitivity(*events))
 
 def consistent(*statements):
+    options = arg_parser.parse_known_args()[0] #apparently returns a tuple
     statements = [logic.compile(s) for s in statements]
 
     events = extract_events(*statements)
