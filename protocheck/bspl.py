@@ -438,13 +438,14 @@ def handle_liveness(protocol, args):
         pp.pprint([k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
         print()
 
-def handle_safeness(protocol, args):
+def handle_safety(protocol, args):
     expr = protocol.unsafe
     us = consistent(expr).sat()[1]
     print("  Safe: ", not us)
-    if us:
+    if us or args.print_safety:
         print("\nFormula:")
         print(json.dumps(expr, default=str, sort_keys=True, indent=2))
+    if us:
         print("\nViolation:")
         pp.pprint([k for k,v in us.items() if v])
         print()
@@ -469,6 +470,8 @@ if __name__ == "__main__":
                help='Print enactment that satisfies enactability')
     parser.add('-l','--print-liveness', action="store_true",
                help='Print liveness formula even if the check succeeds')
+    parser.add('-s','--print-safety', action="store_true",
+               help='Print safety formula')
     parser.add('-a','--print-atomicity', action="store_true",
                help='Print atomicity formulas')
     parser.add('-f','--filter', default='.*', help='Only process protocols matching regexp')
@@ -484,7 +487,7 @@ if __name__ == "__main__":
                 enactable = handle_enactability(protocol, args)
                 if enactable:
                     handle_liveness(protocol,args)
-                handle_safeness(protocol,args)
+                handle_safety(protocol,args)
                 handle_atomicity(protocol,args)
 
     if not spec.protocols:
