@@ -1,0 +1,7 @@
+UnsafeProtocol {
+  roles A, B, C
+  parameters out id key, out data
+
+  A -> C: race[out id, out data]
+  B -> C: race2[out id, out data]
+}
