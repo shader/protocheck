@@ -135,6 +135,7 @@ class Protocol(Base):
         #prove there are no unsafe enactments
         return not consistent(self.unsafe).sat()[0]
 
+    @property
     def atomicity(self):
         return [logic.And(self.correct,
                           self.maximal,
@@ -142,13 +143,8 @@ class Protocol(Base):
                           q.incomplete) for q,r in self.refp]
 
     def check_atomicity(self):
-        for q,r in self.refp:
-            formula = logic.And(self.correct,
-                                self.maximal,
-                                r.enactable,
-                                q.incomplete)
-            expr = consistent(formula)
-            s = expr.sat()[1]
+        for formula in self.atomicity:
+            s = consistent(formula).sat()[1]
             if s: return s, formula
         return None, None
 
