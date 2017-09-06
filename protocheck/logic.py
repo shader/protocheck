@@ -42,6 +42,17 @@ def And(*statements):
 def Or(*statements):
     return statements
 
+def count(statements):
+    if type(statements) is list or type(statements) is tuple:
+        # disjunction
+        return sum(count(s) for s in statements)
+    elif type(statements) is dict:
+        # conjunction
+        return sum(count(s) for s in statements.values())
+    else:
+        # atomic statement
+        return 1
+
 def compile(statements):
     if type(statements) is list or type(statements) is tuple:
         # disjunction

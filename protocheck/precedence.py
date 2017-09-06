@@ -12,6 +12,12 @@ arg_parser = configargparse.get_argument_parser()
 arg_parser.add("-t", "--tseytin", action="store_true")
 arg_parser.add("-g", "--group-events", action="store_true")
 
+stats = {"size": 0, "degree": 0, "statements": 0}
+def reset_stats():
+    stats["size"] = 0
+    stats["degree"] = 0
+    stats["statements"] = 0
+
 ctx = bx.Context()
 aux = bx.Context()
 
@@ -128,7 +134,8 @@ def consistency(*events):
                 transitivity(*events))
 
 def consistent(*statements):
-    options = arg_parser.parse_known_args()[0] #apparently returns a tuple
+    options = arg_parser.parse_known_args()[0]  # apparently returns a tuple
+    stats["statements"] += logic.count(statements)
     statements = [logic.compile(s) for s in statements]
 
     events = extract_events(*statements)
@@ -147,4 +154,7 @@ def consistent(*statements):
     formula = and_(*(clauses + list(statements)))
     if options.tseytin:
         formula = formula.tseytin(aux)
+
+    stats["size"] += formula.size()
+    stats["degree"] = max(stats["degree"], formula.degree())
     return formula
