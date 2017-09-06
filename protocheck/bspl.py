@@ -412,8 +412,10 @@ def strip_latex(spec):
     return spec
 
 def handle_enactability(protocol, args):
+    reset_stats()
     e = protocol.is_enactable()
     print("  Enactable: ", e)
+    print("    stats: ", stats)
     if not e and not args.quiet or args.print_enactability:
         print("    Formula:")
         print(json.dumps(logic.And(protocol.correct, protocol.enactable), default=str, sort_keys=True, indent=2))
@@ -424,8 +426,10 @@ def handle_enactability(protocol, args):
     return e
 
 def handle_liveness(protocol, args):
+    reset_stats()
     l = protocol.is_live()
     print("  Live: ", l)
+    print("    stats: ", stats)
     if not l and not args.quiet or args.print_liveness:
         print("    Formula:")
         print(json.dumps(protocol.dead_end, default=str, sort_keys=True, indent=2))
@@ -435,9 +439,11 @@ def handle_liveness(protocol, args):
         print()
 
 def handle_safety(protocol, args):
+    reset_stats()
     expr = protocol.unsafe
     us = consistent(expr).sat()[1]
     print("  Safe: ", not us)
+    print("    stats: ", stats)
     if us and not args.quiet or args.print_safety:
         print("\nFormula:")
         print(json.dumps(expr, default=str, sort_keys=True, indent=2))
@@ -447,8 +453,10 @@ def handle_safety(protocol, args):
         print()
 
 def handle_atomicity(protocol,args):
+    reset_stats()
     a, formula = protocol.check_atomicity()
     print("  Atomic: ", not a)
+    print("    stats: ", stats)
     if args.print_atomicity:
         print("\nFormula:")
         print(json.dumps(protocol.atomicity(), default=str, sort_keys=True, indent=2))
