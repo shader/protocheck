@@ -343,9 +343,7 @@ class Message(Protocol):
         clauses = [impl(self.received,
                         or_(sequential(p, self.received),
                             simultaneous(p, self.received)))
-                   for p in map(partial(observe, self.recipient), self.ins)]
-        clauses.extend([impl(self.received, simultaneous(p, self.received))
-                        for p in map(partial(observe, self.recipient), self.outs)])
+                   for p in map(partial(observe, self.recipient), self.ins | self.outs)]
         return and_(*clauses)
 
 class Role(Base):
