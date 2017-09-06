@@ -414,7 +414,7 @@ def strip_latex(spec):
 def handle_enactability(protocol, args):
     e = protocol.is_enactable()
     print("  Enactable: ", e)
-    if not e or args.print_enactability:
+    if not e and not args.quiet or args.print_enactability:
         print("    Formula:")
         print(json.dumps(logic.And(protocol.correct, protocol.enactable), default=str, sort_keys=True, indent=2))
         print()
@@ -426,10 +426,10 @@ def handle_enactability(protocol, args):
 def handle_liveness(protocol, args):
     l = protocol.is_live()
     print("  Live: ", l)
-    if not l or args.print_liveness:
+    if not l and not args.quiet or args.print_liveness:
         print("    Formula:")
         print(json.dumps(protocol.dead_end, default=str, sort_keys=True, indent=2))
-    if not l:
+    if not l and not args.quiet:
         print("\n    Violation:")
         pp.pprint([k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
         print()
@@ -438,10 +438,10 @@ def handle_safety(protocol, args):
     expr = protocol.unsafe
     us = consistent(expr).sat()[1]
     print("  Safe: ", not us)
-    if us or args.print_safety:
+    if us and not args.quiet or args.print_safety:
         print("\nFormula:")
         print(json.dumps(expr, default=str, sort_keys=True, indent=2))
-    if us:
+    if us and not args.quiet:
         print("\nViolation:")
         pp.pprint([k for k,v in us.items() if v])
         print()
@@ -452,7 +452,7 @@ def handle_atomicity(protocol,args):
     if args.print_atomicity:
         print("\nFormula:")
         print(json.dumps(protocol.atomicity(), default=str, sort_keys=True, indent=2))
-    if a:
+    if a and not args.quiet:
         print("\nViolation:")
         pp.pprint([k for k,v in a.items() if v])
         print("\nFormula:")
@@ -470,6 +470,8 @@ if __name__ == "__main__":
                help='Print safety formula')
     parser.add('-a','--print-atomicity', action="store_true",
                help='Print atomicity formulas')
+    parser.add('-q','--quiet', action="store_true",
+               help='Prevent printing of violation and formula output')
     parser.add('-f','--filter', default='.*', help='Only process protocols matching regexp')
     parser.add('input', nargs='+', help='Protocol description file(s)')
     args = parser.parse()
