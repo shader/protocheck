@@ -106,14 +106,16 @@ def relationships(statements):
                 rs[p] = {rel}
     return rs
 
-@wrap(var)
-def timeline(*events):
-    "A timeline is linear, and allows only a single relationship between each pair of events; a<b, b<a, or a*b"
-    return and_(
-        *pairwise(lambda a,b: impl(a & b, onehot(simultaneous(a,b),
-                                               sequential(a,b),
-                                               sequential(b,a))), events)
-    )
+
+def timeline(relationships):
+    """A timeline is linear, and allows only a single relationship
+    between each pair of events; a<b, b<a, or a*b"""
+    clauses = []
+    for pair in relationships.keys():
+        clauses.append(impl(var(pair[0]) & var(pair[1]),
+                            onehot(*[relation[rel](*pair) for rel in relationships[pair]])))
+    return and_(*clauses)
+
 
 def occurrence(relationships):
     clauses = []
@@ -158,7 +160,7 @@ def group_events(events):
 
 
 def consistency(relationships, *events):
-    return and_(timeline(*events),
+    return and_(timeline(relationships),
                 occurrence(relationships),
                 transitivity(*events))
 
