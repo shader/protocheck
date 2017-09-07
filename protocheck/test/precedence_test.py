@@ -11,3 +11,7 @@ def test_occurrence():
         print('solution: ', [k for k,v in s.items() if v])
     assert not s
 
+def test_relationships():
+    statements = [simultaneous('a', 'b'), sequential('a', 'b')]
+    rs = relationships(statements)
+    assert ('a', 'b') in rs and len(rs[('a', 'b')]) == 2
