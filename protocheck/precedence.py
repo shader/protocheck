@@ -81,16 +81,29 @@ def causal(event, causes):
     return expr
 
 
+relation = {
+    '<': sequential,
+    '*': simultaneous,
+    '>': lambda a, b: sequential(b, a)
+}
+
+
 def relationships(statements):
     inputs = flatten([s.support() for s in statements])
     rs = {}
     for i in inputs:
         s = re.search('[<.*]', name(i))
         if s:
+            rel = s.group()
+            t = tuple(name(i).split(rel))
+            p = pair(*t)
+            if rel == '<' and t != p:
+                rel = '>'
+
             if p in rs:
-                rs[p].append(i)
+                rs[p].add(rel)
             else:
-                rs[p] = [i]
+                rs[p] = {rel}
     return rs
 
 @wrap(var)
