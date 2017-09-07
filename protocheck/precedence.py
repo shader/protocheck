@@ -80,6 +80,19 @@ def causal(event, causes):
         expr = expr | simultaneous(event, c)
     return expr
 
+
+def relationships(statements):
+    inputs = flatten([s.support() for s in statements])
+    rs = {}
+    for i in inputs:
+        if re.search('[>.*]', name(i)):
+            p = pair(*re.split('[>.*]', name(i)))
+            if p in rs:
+                rs[p].append(i)
+            else:
+                rs[p] = [i]
+    return rs
+
 @wrap(var)
 def timeline(*events):
     "A timeline is linear, and allows only a single relationship between each pair of events; a>b, b>a, or a*b"
