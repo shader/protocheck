@@ -156,16 +156,19 @@ def group_events(events):
             grouped[role] = [e]
     return grouped
 
-def consistency(*events):
+
+def consistency(relationships, *events):
     return and_(timeline(*events),
-                occurrence(*events),
+                occurrence(relationships),
                 transitivity(*events))
+
 
 def consistent(*statements):
     options = arg_parser.parse_known_args()[0]  # apparently returns a tuple
     stats["statements"] += logic.count(statements)
     statements = [logic.compile(s) for s in statements]
 
+    rels = relationships(statements)
     events = extract_events(*statements)
 
     clauses = []
@@ -174,10 +177,10 @@ def consistent(*statements):
 
         for role in groups:
             es = groups[role]
-            clause = consistency(*es)
+            clause = consistency(rels, *es)
             clauses.append(clause)
     else:
-        clauses.append(consistency(*events))
+        clauses.append(consistency(rels, *events))
 
     formula = and_(*(clauses + list(statements)))
     if options.tseytin:
