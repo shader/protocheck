@@ -115,14 +115,12 @@ def timeline(*events):
                                                sequential(b,a))), events)
     )
 
-@wrap(var)
-def occurrence(*events):
-    "Relationships between events imply that the events themselves occur"
-    return and_(*pairwise(lambda a,b: impl(or_(simultaneous(a,b),
-                                               sequential(a,b),
-                                               sequential(b,a)),
-                                           a & b),
-                          events))
+def occurrence(relationships):
+    clauses = []
+    for pair in relationships.keys():
+        for r in relationships[pair]:
+            clauses.append(impl(relation[r](*pair), var(pair[0]) & var(pair[1])))
+    return and_(*clauses)
 
 flatten = chain.from_iterable
 

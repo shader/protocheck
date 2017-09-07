@@ -7,7 +7,7 @@ from protocheck.precedence import (
 
 
 def test_occurrence():
-    occ = occurrence(*extract_events(simultaneous('a', 'b')))
+    occ = occurrence(relationships([simultaneous('a', 'b')]))
     print('occurrence: ', occ)
     formula = and_(occ, simultaneous('a', 'b'), not_(var('a')))
     print('formula: ', formula)
