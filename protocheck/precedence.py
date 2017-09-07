@@ -57,7 +57,7 @@ def pairwise(fn, xs):
 def sequential(a, b, *rest):
     if rest:
         return and_(*pairwise(sequential, args))
-    return var(a + ">" + b)
+    return var(a + "<" + b)
 
 @wrap(name)
 def simultaneous(a, b, *rest):
@@ -85,8 +85,8 @@ def relationships(statements):
     inputs = flatten([s.support() for s in statements])
     rs = {}
     for i in inputs:
-        if re.search('[>.*]', name(i)):
-            p = pair(*re.split('[>.*]', name(i)))
+        s = re.search('[<.*]', name(i))
+        if s:
             if p in rs:
                 rs[p].append(i)
             else:
@@ -95,7 +95,7 @@ def relationships(statements):
 
 @wrap(var)
 def timeline(*events):
-    "A timeline is linear, and allows only a single relationship between each pair of events; a>b, b>a, or a*b"
+    "A timeline is linear, and allows only a single relationship between each pair of events; a<b, b<a, or a*b"
     return and_(
         *pairwise(lambda a,b: impl(a & b, onehot(simultaneous(a,b),
                                                sequential(a,b),
@@ -133,7 +133,7 @@ def transitivity(*events):
 
 def extract_events(*statements):
     inputs = flatten([s.support() for s in statements])
-    return set(flatten([re.split('[>.*]', name(i)) for i in inputs]))
+    return set(flatten([re.split('[<.*]', name(i)) for i in inputs]))
 
 def group_events(events):
     grouped = {}
