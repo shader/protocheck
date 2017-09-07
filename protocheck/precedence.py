@@ -43,6 +43,10 @@ def wrap(fn):
         return transform
     return wrapper
 
+
+def pair(a, b):
+    return tuple(sorted((a, b)))
+
 def pairs(xs):
     return combinations(xs, 2)
 
