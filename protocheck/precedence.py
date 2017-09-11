@@ -161,6 +161,34 @@ def align(a, b):
 def outer(a, b):
     a, b = align(a, b)
     return (a[0], b[1])
+
+
+def new_transitivity(relationships):
+    clauses = []
+    pairs = relationships.keys()
+    for r in pairs:
+        rels_r = relationships[r]
+        for s in pairs:
+            rels_s = relationships[s]
+            if r is not s and pivot(r, s):
+                a, b = align(r, s)
+                if a != r:
+                    rels_r = invert(rels_r)
+                if b != s:
+                    rels_s = invert(rels_s)
+                t = outer(a, b)
+
+                for rel in rels_r:
+                    for x in rels_s:
+                        if rel == "*":
+                            clauses.append(impl(simultaneous(*a) & relation[x](*b),
+                                                relation[x](*t)))
+                        elif x == "*" or x == rel:
+                            clauses.append(impl(relation[rel](*a) & relation[x](*b),
+                                                relation[rel](*t)))
+
+    return and_(*clauses)
+
 def transitive(fn):
     def inner(a,b,c):
         return and_(impl(fn(a,b) & fn(b,c), fn(a,c)),

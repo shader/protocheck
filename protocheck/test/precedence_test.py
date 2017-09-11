@@ -1,8 +1,8 @@
 import pytest
 from boolexpr import and_, not_
 from protocheck.precedence import (
-    transitivity, relationships, var,
-    occurrence, simultaneous, sequential, extract_events
+    transitivity, relationships, var, new_transitivity,
+    occurrence, simultaneous, sequential, extract_events,
     timeline,
     invert,
     normalize,
@@ -66,3 +66,7 @@ def test_align():
 
 def test_outer():
     assert outer((1, 2), (2, 3)) == (1, 3)
+
+
+def test_transitivity():
+    assert not new_transitivity(relationships([sequential('a', 'b'),sequential('b', 'c')]))
