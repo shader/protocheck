@@ -8,6 +8,7 @@ from protocheck.precedence import (
     normalize,
     pivot,
     antipivot,
+    align,
 )
 
 
@@ -55,3 +56,8 @@ def test_pivot():
 
 def test_antipivot():
     assert antipivot((1, 2), (2, 3)) == 1
+
+
+def test_align():
+    assert align((1, 2), (2, 3)) == ((1, 2), (2, 3))
+    assert align((1, 2), (3, 2)) == ((1, 2), (2, 3))
