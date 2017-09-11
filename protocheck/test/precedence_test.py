@@ -3,7 +3,9 @@ from boolexpr import and_, not_
 from protocheck.precedence import (
     transitivity, relationships, var,
     occurrence, simultaneous, sequential, extract_events
-    timeline
+    timeline,
+    invert,
+    normalize,
 )
 
 
@@ -34,3 +36,12 @@ def test_timeline():
     if s:
         print('solution: ', [k for k, v in s.items() if v])
     assert not s
+
+
+def test_invert():
+    assert invert({"*", ">"}) == {"*", "<"}
+
+
+def test_normalize():
+    assert normalize((1, 2), {"*", ">"}) == ((1, 2), {"*", ">"})
+    assert normalize((2, 1), {"*", ">"}) == ((1, 2), {"*", "<"})

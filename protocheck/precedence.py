@@ -20,6 +20,8 @@ def reset_stats():
 
 ctx = bx.Context()
 aux = bx.Context()
+flatten = chain.from_iterable
+
 
 def name(var):
     "convert name or var to name"
@@ -124,8 +126,21 @@ def occurrence(relationships):
             clauses.append(impl(relation[r](*pair), var(pair[0]) & var(pair[1])))
     return and_(*clauses)
 
-flatten = chain.from_iterable
 
+def invert(relationships):
+    inverses = {"*": "*",
+                ">": "<",
+                "<": ">"}
+    return set(map(lambda r: inverses[r], relationships))
+
+
+def normalize(p, relationships):
+    n = pair(*p)
+    if n == p:
+        return p, relationships
+    else:
+        # must have been backwards; invert relationships
+        return n, invert(relationships)
 def transitive(fn):
     def inner(a,b,c):
         return and_(impl(fn(a,b) & fn(b,c), fn(a,c)),
