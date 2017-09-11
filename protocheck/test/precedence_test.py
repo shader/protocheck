@@ -9,6 +9,7 @@ from protocheck.precedence import (
     pivot,
     antipivot,
     align,
+    outer,
 )
 
 
@@ -61,3 +62,7 @@ def test_antipivot():
 def test_align():
     assert align((1, 2), (2, 3)) == ((1, 2), (2, 3))
     assert align((1, 2), (3, 2)) == ((1, 2), (2, 3))
+
+
+def test_outer():
+    assert outer((1, 2), (2, 3)) == (1, 3)

@@ -156,6 +156,11 @@ def align(a, b):
     if not p:
         return None, None
     return (antipivot(a, b), p), (p, antipivot(b, a))
+
+
+def outer(a, b):
+    a, b = align(a, b)
+    return (a[0], b[1])
 def transitive(fn):
     def inner(a,b,c):
         return and_(impl(fn(a,b) & fn(b,c), fn(a,c)),
