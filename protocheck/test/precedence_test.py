@@ -6,6 +6,7 @@ from protocheck.precedence import (
     timeline,
     invert,
     normalize,
+    pivot,
 )
 
 
@@ -45,3 +46,7 @@ def test_invert():
 def test_normalize():
     assert normalize((1, 2), {"*", ">"}) == ((1, 2), {"*", ">"})
     assert normalize((2, 1), {"*", ">"}) == ((1, 2), {"*", "<"})
+
+
+def test_pivot():
+    assert pivot((1, 2), (2, 3)) == 2
