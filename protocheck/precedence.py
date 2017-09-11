@@ -145,6 +145,10 @@ def normalize(p, relationships):
 
 def pivot(a, b):
     return (set(a) & set(b)).pop()
+
+
+def antipivot(a, b):
+    return (set(a) - set(b)).pop()
 def transitive(fn):
     def inner(a,b,c):
         return and_(impl(fn(a,b) & fn(b,c), fn(a,c)),
