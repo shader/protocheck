@@ -10,16 +10,16 @@ from protocheck import logic
 
 arg_parser = configargparse.get_argument_parser()
 arg_parser.add("-t", "--tseytin", action="store_true")
-
+ctx = bx.Context()
+aux = bx.Context()
+flatten = chain.from_iterable
 stats = {"size": 0, "degree": 0, "statements": 0}
+
+
 def reset_stats():
     stats["size"] = 0
     stats["degree"] = 0
     stats["statements"] = 0
-
-ctx = bx.Context()
-aux = bx.Context()
-flatten = chain.from_iterable
 
 
 def name(var):
@@ -30,11 +30,13 @@ def name(var):
         return var.get('name')
     return str(var)
 
+
 def var(n):
     "convert name or var to var"
     if type(n) == bx.wrap.Variable:
         return n
     return ctx.get_var(n)
+
 
 def wrap(fn):
     "Apply function to all arguments on a function"
@@ -48,17 +50,21 @@ def wrap(fn):
 def pair(a, b):
     return tuple(sorted((a, b)))
 
+
 def pairs(xs):
     return combinations(xs, 2)
 
+
 def pairwise(fn, xs):
     return map(lambda p: fn(*p), pairs(xs))
+
 
 @wrap(name)
 def sequential(a, b, *rest):
     if rest:
         return and_(*pairwise(sequential, args))
     return var(a + "<" + b)
+
 
 @wrap(name)
 def simultaneous(a, b, *rest):
@@ -68,11 +74,13 @@ def simultaneous(a, b, *rest):
     a,b = sorted((a,b)) #make sure we always use pairs in the same order
     return var(a+ "*" +b)
 
+
 @wrap(var)
 def ordered(*args):
     "Arguments happen in some order; not simultaneously"
     expr = or_(*[~v for v in args])
     return or_(expr, *pairwise(lambda a,b: sequential(a,b) | sequential(b,a), args))
+
 
 def causal(event, causes):
     event = var(event)
@@ -161,6 +169,7 @@ def outer(a, b):
     s = antipivot(b, a)
     if r and s:
         return (r, s)
+
 
 def align(a, b):
     """Given (a, b) and (c, b), returns ((a, b), (b, c))"""
