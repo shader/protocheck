@@ -10,7 +10,6 @@ from protocheck import logic
 
 arg_parser = configargparse.get_argument_parser()
 arg_parser.add("-t", "--tseytin", action="store_true")
-arg_parser.add("-g", "--group-events", action="store_true")
 
 stats = {"size": 0, "degree": 0, "statements": 0}
 def reset_stats():
@@ -207,20 +206,6 @@ def transitivity(triples):
                                         relation[rel_a](*o)))
     return clauses
 
-def extract_events(*statements):
-    inputs = flatten([s.support() for s in statements])
-    return set(flatten([re.split('[<.*]', name(i)) for i in inputs]))
-
-def group_events(events):
-    grouped = {}
-    for e in events:
-        role, event = re.split(':', e)
-        if role in grouped:
-            grouped[role].append(e)
-        else:
-            grouped[role] = [e]
-    return grouped
-
 
 def consistency(relationships):
     return timeline(relationships) \
@@ -234,18 +219,6 @@ def consistent(*statements):
     statements = [logic.compile(s) for s in statements]
 
     rels = relationships(statements)
-    events = extract_events(*statements)
-
-    clauses = []
-    if options.group_events:
-        groups = group_events(events)
-
-        for role in groups:
-            es = groups[role]
-            clause = consistency(rels, *es)
-            clauses.append(clause)
-    else:
-        clauses.append(consistency(rels))
 
     formula = and_(*(consistency(rels) + list(statements)))
     if options.tseytin:
