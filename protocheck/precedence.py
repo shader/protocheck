@@ -144,11 +144,17 @@ def normalize(p, relationships):
 
 
 def pivot(a, b):
-    return (set(a) & set(b)).pop()
+    """Given (a, b) and (b, c), returns b"""
+    intersection = set(a) & set(b)
+    if intersection:
+        return intersection.pop()
 
 
 def antipivot(a, b):
-    return (set(a) - set(b)).pop()
+    """Given (a, b) and (b, c), returns a"""
+    intersection = set(a) - set(b)
+    if intersection:
+        return intersection.pop()
 
 
 def align(a, b):
