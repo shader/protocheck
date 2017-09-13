@@ -62,7 +62,7 @@ def pairwise(fn, xs):
 @wrap(name)
 def sequential(a, b, *rest):
     if rest:
-        return and_(*pairwise(sequential, args))
+        return and_(*pairwise(sequential, (a, b) + rest))
     return var(a + "<" + b)
 
 
