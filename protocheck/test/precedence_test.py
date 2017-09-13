@@ -1,5 +1,5 @@
 import pytest
-from boolexpr import and_, not_
+from boolexpr import and_, not_, impl
 from protocheck.precedence import (
     transitivity, relationships, var, new_transitivity,
     occurrence, simultaneous, sequential, extract_events,
@@ -11,6 +11,7 @@ from protocheck.precedence import (
     align,
     outer,
     match,
+    triples
 )
 
 
@@ -76,5 +77,25 @@ def test_match():
     assert {'>'} == match(a, (2, 1), rels)
 
 
+def test_triples():
+    # shouldn't generate transitivity since the bridge clause doesn't exist
+    assert not triples(relationships([sequential('a', 'b'),
+                                      sequential('b', 'c')]))
+    # this one should though
+    assert triples(relationships([sequential('a', 'b'),
+                                  sequential('b', 'c'),
+                                  sequential('a', 'c')]))
+
+
 def test_transitivity():
-    assert not new_transitivity(relationships([sequential('a', 'b'),sequential('b', 'c')]))
+    def trans(s):
+        return new_transitivity(triples(relationships(s)))
+
+    statements = [sequential('a', 'b'),
+                  sequential('b', 'c'),
+                  sequential('d', 'e')]
+    assert [] == trans(statements)
+
+    statements += sequential('a', 'c')
+    assert trans(statements)[0].equiv(
+        impl(and_(var("a<b"), var("b<c")), var("a<c")))

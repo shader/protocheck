@@ -178,31 +178,34 @@ def match(new, old, rels):
     return rels
 
 
-def new_transitivity(relationships):
-    clauses = []
+def triples(relationships):
+    triples = {}
     pairs = relationships.keys()
     for r in pairs:
-        rels_r = relationships[r]
         for s in pairs:
-            rels_s = relationships[s]
-            if r is not s and pivot(r, s):
+            o = outer(r, s)
+            if r is not s and pivot(r, s) and o in relationships:
                 a, b = align(r, s)
-                if a != r:
-                    rels_r = invert(rels_r)
-                if b != s:
-                    rels_s = invert(rels_s)
-                t = outer(a, b)
+                triples[a + b[1:]] = (match(a, r, relationships[r]),
+                                      match(b, s, relationships[s]))
+    return triples
 
-                for rel in rels_r:
-                    for x in rels_s:
-                        if rel == "*":
-                            clauses.append(impl(simultaneous(*a) & relation[x](*b),
-                                                relation[x](*t)))
-                        elif x == "*" or x == rel:
-                            clauses.append(impl(relation[rel](*a) & relation[x](*b),
-                                                relation[rel](*t)))
 
-    return and_(*clauses)
+def new_transitivity(triples):
+    clauses = []
+    for triple, (rels_a, rels_b) in triples.items():
+        a = (triple[0], triple[1])
+        b = (triple[1], triple[2])
+        o = (triple[0], triple[2])
+        for rel_a in rels_a:
+            for rel_b in rels_b:
+                if rel_a == "*":
+                    clauses.append(impl(simultaneous(*a) & relation[rel_b](*b),
+                                        relation[rel_b](*o)))
+                elif rel_b == "*" or rel_b == rel_a:
+                    clauses.append(impl(relation[rel_a](*a) & relation[rel_b](*b),
+                                        relation[rel_a](*o)))
+    return clauses
 
 def transitive(fn):
     def inner(a,b,c):
