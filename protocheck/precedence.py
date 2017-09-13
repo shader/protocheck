@@ -116,7 +116,7 @@ def timeline(relationships):
     for pair in relationships.keys():
         clauses.append(impl(var(pair[0]) & var(pair[1]),
                             onehot(*[relation[rel](*pair) for rel in relationships[pair]])))
-    return and_(*clauses)
+    return clauses
 
 
 def occurrence(relationships):
@@ -124,7 +124,7 @@ def occurrence(relationships):
     for pair in relationships.keys():
         for r in relationships[pair]:
             clauses.append(impl(relation[r](*pair), var(pair[0]) & var(pair[1])))
-    return and_(*clauses)
+    return clauses
 
 
 def invert(relationships):
@@ -223,9 +223,9 @@ def group_events(events):
 
 
 def consistency(relationships):
-    return and_(timeline(relationships),
-                occurrence(relationships),
-                *transitivity(triples(relationships)))
+    return timeline(relationships) \
+        + occurrence(relationships) \
+        + transitivity(triples(relationships))
 
 
 def consistent(*statements):
@@ -247,7 +247,7 @@ def consistent(*statements):
     else:
         clauses.append(consistency(rels))
 
-    formula = and_(*(clauses + list(statements)))
+    formula = and_(*(consistency(rels) + list(statements)))
     if options.tseytin:
         formula = formula.tseytin(aux)
 

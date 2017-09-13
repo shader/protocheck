@@ -2,7 +2,7 @@ import pytest
 from boolexpr import and_, not_, impl
 from protocheck.precedence import (
     transitivity, relationships, var,
-    occurrence, simultaneous, sequential, extract_events,
+    occurrence, simultaneous, sequential,
     timeline,
     invert,
     normalize,
@@ -18,7 +18,7 @@ from protocheck.precedence import (
 def test_occurrence():
     occ = occurrence(relationships([simultaneous('a', 'b')]))
     print('occurrence: ', occ)
-    formula = and_(occ, simultaneous('a', 'b'), not_(var('a')))
+    formula = and_(simultaneous('a', 'b'), not_(var('a')), *occ)
     print('formula: ', formula)
     s = formula.sat()[1]
     if s:
@@ -36,7 +36,7 @@ def test_timeline():
     statements = [simultaneous('a', 'b'), sequential('b', 'a')]
     t = timeline(relationships(statements))
     print('timeline: ', t)
-    formula = and_(t, var('a'), var('b'), *statements)
+    formula = and_(var('a'), var('b'), *(t + statements))
     print('formula: ', formula)
     s = formula.sat()[1]
     if s:
