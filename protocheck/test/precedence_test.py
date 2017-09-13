@@ -1,7 +1,7 @@
 import pytest
 from boolexpr import and_, not_, impl
 from protocheck.precedence import (
-    transitivity, relationships, var, new_transitivity,
+    transitivity, relationships, var,
     occurrence, simultaneous, sequential, extract_events,
     timeline,
     invert,
@@ -89,7 +89,7 @@ def test_triples():
 
 def test_transitivity():
     def trans(s):
-        return new_transitivity(triples(relationships(s)))
+        return transitivity(triples(relationships(s)))
 
     statements = [sequential('a', 'b'),
                   sequential('b', 'c'),

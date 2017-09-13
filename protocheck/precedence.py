@@ -191,7 +191,7 @@ def triples(relationships):
     return triples
 
 
-def new_transitivity(triples):
+def transitivity(triples):
     clauses = []
     for triple, (rels_a, rels_b) in triples.items():
         a = (triple[0], triple[1])
@@ -206,24 +206,6 @@ def new_transitivity(triples):
                     clauses.append(impl(relation[rel_a](*a) & relation[rel_b](*b),
                                         relation[rel_a](*o)))
     return clauses
-
-def transitive(fn):
-    def inner(a,b,c):
-        return and_(impl(fn(a,b) & fn(b,c), fn(a,c)),
-                    impl(simultaneous(a,b) & fn(b,c), fn(a,c)),
-                    impl(fn(a,b) & simultaneous(b,c), fn(a,c)))
-    return inner
-
-def transitivity(*events):
-    "Simultanaeity and sequentiality are transitive properties"
-    clauses = []
-    sim = transitive(simultaneous)
-    seq = transitive(sequential)
-
-    clauses.extend([sim(*tup) for tup in combinations(events, 3)])
-    clauses.extend([seq(*tup) for tup in permutations(events, 3)])
-
-    return and_s(*clauses)
 
 def extract_events(*statements):
     inputs = flatten([s.support() for s in statements])
@@ -240,10 +222,10 @@ def group_events(events):
     return grouped
 
 
-def consistency(relationships, *events):
+def consistency(relationships):
     return and_(timeline(relationships),
                 occurrence(relationships),
-                transitivity(*events))
+                *transitivity(triples(relationships)))
 
 
 def consistent(*statements):
@@ -263,7 +245,7 @@ def consistent(*statements):
             clause = consistency(rels, *es)
             clauses.append(clause)
     else:
-        clauses.append(consistency(rels, *events))
+        clauses.append(consistency(rels))
 
     formula = and_(*(clauses + list(statements)))
     if options.tseytin:
