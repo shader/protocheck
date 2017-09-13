@@ -1,4 +1,5 @@
 import pytest
+from boolexpr import not_
 from protocheck.bspl import *
 from protocheck import precedence, logic
 

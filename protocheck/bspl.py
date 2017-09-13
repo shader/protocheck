@@ -334,7 +334,7 @@ class Message(Protocol):
                 for p in self.nils]
         outs = [impl(self.sent, simultaneous(s(p), self.sent))
                 for p in self.outs]
-        return and_s(*(ins + nils + outs))
+        return and_(*(ins + nils + outs))
 
     @property
     @logic.named

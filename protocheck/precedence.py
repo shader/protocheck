@@ -2,7 +2,7 @@
 import os
 import sys
 import boolexpr as bx
-from boolexpr import *
+from boolexpr import and_, impl, or_, onehot
 from itertools import combinations, permutations, chain
 import re
 import configargparse
