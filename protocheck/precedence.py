@@ -164,10 +164,12 @@ def outer(a, b):
         return (r, s)
 
 def align(a, b):
+    """Given (a, b) and (c, b), returns ((a, b), (b, c))"""
     p = pivot(a, b)
     if not p:
         return None, None
-    return (antipivot(a, b), p), (p, antipivot(b, a))
+    o = outer(a, b)
+    return (o[0], p), (p, o[1])
 
 
 
