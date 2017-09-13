@@ -172,6 +172,10 @@ def align(a, b):
     return (o[0], p), (p, o[1])
 
 
+def match(new, old, rels):
+    if new != old:
+        return invert(rels)
+    return rels
 
 
 def new_transitivity(relationships):

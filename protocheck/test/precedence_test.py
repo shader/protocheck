@@ -10,6 +10,7 @@ from protocheck.precedence import (
     antipivot,
     align,
     outer,
+    match,
 )
 
 
@@ -66,6 +67,13 @@ def test_align():
 
 def test_outer():
     assert outer((1, 2), (2, 3)) == (1, 3)
+
+
+def test_match():
+    a = (1, 2)
+    rels = {'<'}
+    assert rels == match(a, a, rels)
+    assert {'>'} == match(a, (2, 1), rels)
 
 
 def test_transitivity():
