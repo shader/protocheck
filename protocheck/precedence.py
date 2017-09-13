@@ -69,10 +69,10 @@ def sequential(a, b, *rest):
 @wrap(name)
 def simultaneous(a, b, *rest):
     if rest:
-        return and_(*pairwise(simultaneous, args))
-    
-    a,b = sorted((a,b)) #make sure we always use pairs in the same order
-    return var(a+ "*" +b)
+        return and_(*pairwise(simultaneous, (a, b) + rest))
+
+    a, b = sorted((a, b))  # make sure we always use pairs in the same order
+    return var(a + "*" + b)
 
 
 @wrap(var)
