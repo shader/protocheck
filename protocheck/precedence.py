@@ -157,6 +157,12 @@ def antipivot(a, b):
         return intersection.pop()
 
 
+def outer(a, b):
+    r = antipivot(a, b)
+    s = antipivot(b, a)
+    if r and s:
+        return (r, s)
+
 def align(a, b):
     p = pivot(a, b)
     if not p:
@@ -164,9 +170,6 @@ def align(a, b):
     return (antipivot(a, b), p), (p, antipivot(b, a))
 
 
-def outer(a, b):
-    a, b = align(a, b)
-    return (a[0], b[1])
 
 
 def new_transitivity(relationships):
