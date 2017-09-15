@@ -221,10 +221,13 @@ def transitivity(triples):
     return clauses
 
 
-def consistency(relationships):
-    return timeline(relationships) \
-        + occurrence(relationships) \
-        + transitivity(triples(relationships))
+def consistency(rels):
+    c = timeline(rels)
+    c += occurrence(relationships(c))
+    c += transitivity(triples(relationships(c)))
+    c += timeline(relationships(c))
+    c += occurrence(relationships(c))
+    return c
 
 
 def consistent(*statements):
