@@ -11,7 +11,8 @@ from protocheck.precedence import (
     align,
     outer,
     match,
-    triples
+    triples,
+    consistent
 )
 
 
@@ -98,3 +99,27 @@ def test_transitivity():
     statements += sequential('a', 'c')
     assert trans(statements)[0].equiv(
         impl(and_(var("a<b"), var("b<c")), var("a<c")))
+
+
+def to_char(i):
+    return bytes([i+b'a'[0]]).decode()
+
+
+def chain(n):
+    clauses = []
+    for i in range(n):
+        clauses.append(sequential(to_char(i), to_char(i+1)))
+    return clauses
+
+
+def test_consistent():
+    def check(cs):
+        return consistent(cs).sat()[1]
+
+    # check basic consistency
+    assert consistent(var('a'), var('b'), sequential('a', 'b')).sat()[0]
+
+    # see how long a causal loop can be before transitivity stops working
+    for i in range(1, 5):
+        clauses = [sequential(to_char(i), 'a')] + chain(i)
+        assert not check(and_(*clauses))
