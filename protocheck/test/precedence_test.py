@@ -78,13 +78,12 @@ def test_match():
 
 
 def test_triples():
-    # shouldn't generate transitivity since the bridge clause doesn't exist
-    assert not triples(relationships([sequential('a', 'b'),
-                                      sequential('b', 'c')]))
-    # this one should though
-    assert triples(relationships([sequential('a', 'b'),
-                                  sequential('b', 'c'),
-                                  sequential('a', 'c')]))
+    assert len(triples(relationships([sequential('a', 'b'),
+                                      sequential('b', 'c')])).items()) == 1
+
+    assert len(triples(relationships([sequential('a', 'b'),
+                                      sequential('b', 'c'),
+                                      sequential('c', 'd')])).items()) == 2
 
 
 def test_transitivity():
@@ -94,7 +93,7 @@ def test_transitivity():
     statements = [sequential('a', 'b'),
                   sequential('b', 'c'),
                   sequential('d', 'e')]
-    assert [] == trans(statements)
+    assert len(trans(statements)) == 1
 
     statements += sequential('a', 'c')
     assert trans(statements)[0].equiv(
