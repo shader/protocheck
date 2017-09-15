@@ -178,7 +178,7 @@ def align(a, b):
     p = pivot(a, b)
     if not p:
         return None, None
-    o = outer(a, b)
+    o = pair(*outer(a, b))
     return (o[0], p), (p, o[1])
 
 
@@ -193,11 +193,14 @@ def triples(relationships):
     pairs = relationships.keys()
     for r in pairs:
         for s in pairs:
-            o = outer(r, s)
-            if r is not s and pivot(r, s) and o in relationships:
+            if r is not s and pivot(r, s):
                 a, b = align(r, s)
-                triples[a + b[1:]] = (match(a, r, relationships[r]),
-                                      match(b, s, relationships[s]))
+                if antipivot(a, b) in r:
+                    triples[a + b[1:]] = (match(a, r, relationships[r]),
+                                          match(b, s, relationships[s]))
+                else:
+                    triples[a + b[1:]] = (match(a, s, relationships[s]),
+                                          match(b, r, relationships[r]))
     return triples
 
 
