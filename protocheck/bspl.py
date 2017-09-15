@@ -279,6 +279,10 @@ class Message(Protocol):
         if not self.recipient:
             raise LookupError("Role not found", schema['recipient'])
 
+    @property
+    def name(self):
+        return self.parent.name + "/" + self.schema['name']
+
     def instance(self, parent):
         return Message(self.schema, parent)
 
