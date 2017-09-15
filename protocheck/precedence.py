@@ -79,7 +79,9 @@ def simultaneous(a, b, *rest):
 def ordered(*args):
     "Arguments happen in some order; not simultaneously"
     expr = or_(*[~v for v in args])
-    return or_(expr, *pairwise(lambda a,b: sequential(a,b) | sequential(b,a), args))
+    return or_(expr,
+               *pairwise(lambda a, b: sequential(a, b) | sequential(b, a),
+                         args))
 
 
 def causal(event, causes):
@@ -120,16 +122,16 @@ def timeline(relationships):
     """A timeline is linear, and allows only a single relationship
     between each pair of events; a<b, b<a, or a*b"""
     clauses = []
-    for pair in relationships.keys():
+    for pair, rels in relationships.items():
         clauses.append(impl(var(pair[0]) & var(pair[1]),
-                            onehot(*[relation[rel](*pair) for rel in relationships[pair]])))
+                            onehot(*[relation[rel](*pair) for rel in rels])))
     return clauses
 
 
 def occurrence(relationships):
     clauses = []
-    for pair in relationships.keys():
-        for r in relationships[pair]:
+    for pair, rels in relationships.items():
+        for r in rels:
             clauses.append(impl(relation[r](*pair), var(pair[0]) & var(pair[1])))
     return clauses
 
