@@ -1,4 +1,5 @@
 from protocheck import logic
+from boolexpr import onehot0
 from protocheck.precedence import *
 from protocheck.bspl_parser import BsplParser
 from functools import partial
