@@ -79,10 +79,10 @@ def simultaneous(a, b, *rest):
 @wrap(var)
 def ordered(*args):
     "Arguments happen in some order; not simultaneously"
-    expr = or_(*[~v for v in args])
-    return or_(expr,
-               *pairwise(lambda a, b: sequential(a, b) | sequential(b, a),
-                         args))
+    return and_(*pairwise(lambda a, b: ~a | ~b
+                          | sequential(a, b)
+                          | sequential(b, a),
+                          args))
 
 
 def causal(event, causes):

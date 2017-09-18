@@ -12,8 +12,17 @@ from protocheck.precedence import (
     outer,
     match,
     triples,
-    consistent
+    consistent,
+    ordered
 )
+
+
+def test_ordered():
+    assert not (ordered('a', 'b')
+                & var('a')
+                & var('b')
+                & ~sequential('a', 'b')
+                & ~sequential('b', 'a')).sat()[1]
 
 
 def test_occurrence():
