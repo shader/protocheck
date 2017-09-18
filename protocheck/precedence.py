@@ -2,7 +2,7 @@
 import os
 import sys
 import boolexpr as bx
-from boolexpr import and_, impl, or_, onehot
+from boolexpr import and_, impl, or_, onehot, and_s
 from itertools import combinations, permutations, chain
 import re
 import configargparse
@@ -10,6 +10,7 @@ from protocheck import logic
 
 arg_parser = configargparse.get_argument_parser()
 arg_parser.add("-t", "--tseytin", action="store_true")
+arg_parser.add("--exhaustive", action="store_true")
 ctx = bx.Context()
 aux = bx.Context()
 flatten = chain.from_iterable
@@ -56,7 +57,7 @@ def pairs(xs):
 
 
 def pairwise(fn, xs):
-    return map(lambda p: fn(*p), pairs(xs))
+    return list(map(lambda p: fn(*p), pairs(xs)))
 
 
 @wrap(name)
@@ -221,7 +222,8 @@ def transitivity(triples):
     return clauses
 
 
-def consistency(rels):
+def consistency(statements):
+    rels = relationships(statements)
     c = timeline(rels)
     c += occurrence(relationships(c))
     c += transitivity(triples(relationships(c)))
@@ -230,14 +232,71 @@ def consistency(rels):
     return c
 
 
-def consistent(*statements):
+def extract_events(statements):
+    inputs = flatten([s.support() for s in statements])
+    return set(flatten([re.split('[<.*]', name(i)) for i in inputs]))
+
+
+def transitive(fn):
+    def inner(a, b, c):
+        return and_(impl(fn(a, b) & fn(b, c), fn(a, c)),
+                    impl(simultaneous(a, b) & fn(b, c), fn(a, c)),
+                    impl(fn(a, b) & simultaneous(b, c), fn(a, c)))
+    return inner
+
+
+def exhaustive_transitivity(events):
+    "Simultanaeity and sequentiality are transitive properties"
+    clauses = []
+    sim = transitive(simultaneous)
+    seq = transitive(sequential)
+
+    clauses.extend([sim(*tup) for tup in combinations(events, 3)])
+    clauses.extend([seq(*tup) for tup in permutations(events, 3)])
+
+    return clauses
+
+
+@wrap(var)
+def exhaustive_occurrence(*events):
+    "Relationships between events imply that the events themselves occur"
+    return pairwise(lambda a, b: impl(or_(simultaneous(a, b),
+                                          sequential(a, b),
+                                          sequential(b, a)),
+                                      a & b),
+                    events)
+
+
+@wrap(var)
+def exhaustive_timeline(*events):
+    """
+    A timeline is linear, and allows only a single relationship between
+    each pair of events; a<b, b<a, or a*b
+    """
+    return pairwise(lambda a, b: impl(a & b, onehot(simultaneous(a, b),
+                                                    sequential(a, b),
+                                                    sequential(b, a))), events)
+
+
+def exhaustive_consistency(statements):
+    events = extract_events(statements)
+    return exhaustive_timeline(*events) \
+        + exhaustive_occurrence(*events) \
+        + exhaustive_transitivity(events)
+
+
+def consistent(*statements, exhaustive=False):
     options = arg_parser.parse_known_args()[0]  # apparently returns a tuple
     stats["statements"] += logic.count(statements)
     statements = [logic.compile(s) for s in statements]
 
-    rels = relationships(statements)
+    clauses = statements
+    if options.exhaustive or exhaustive:
+        clauses += exhaustive_consistency(statements)
+    else:
+        clauses += consistency(statements)
 
-    formula = and_(*(consistency(rels) + list(statements)))
+    formula = and_s(*clauses)
     if options.tseytin:
         formula = formula.tseytin(aux)
 

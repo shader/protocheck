@@ -123,3 +123,16 @@ def test_consistent():
     for i in range(1, 5):
         clauses = [sequential(to_char(i), 'a')] + chain(i)
         assert not check(and_(*clauses))
+
+
+def test_exhaustive_consistent():
+    def check(cs):
+        return consistent(cs, exhaustive=True).sat()[1]
+
+    # check basic consistency
+    assert consistent(var('a'), var('b'), sequential('a', 'b')).sat()[0]
+
+    # see how long a causal loop can be before transitivity stops working
+    for i in range(1, 5):
+        clauses = [sequential(to_char(i), 'a')] + chain(i)
+        assert not check(and_(*clauses))
