@@ -11,6 +11,8 @@ from protocheck import logic
 arg_parser = configargparse.get_argument_parser()
 arg_parser.add("-t", "--tseytin", action="store_true")
 arg_parser.add("--exhaustive", action="store_true")
+arg_parser.add("--depth", default=1, help="Longest transitive relationship to generate. \
+Only need log2(max-chain) to prevent cycles.")
 ctx = bx.Context()
 aux = bx.Context()
 flatten = chain.from_iterable
@@ -294,7 +296,10 @@ def consistent(*statements, exhaustive=False):
     if options.exhaustive or exhaustive:
         clauses += exhaustive_consistency(statements)
     else:
-        clauses += consistency(statements)
+        depth = int(options.depth)
+        for d in range(depth):
+            clauses += consistency(clauses)
+            print("depth: ", d)
 
     formula = and_s(*clauses)
     if options.tseytin:
