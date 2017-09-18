@@ -226,9 +226,7 @@ def transitivity(triples):
 
 def consistency(statements):
     rels = relationships(statements)
-    c = timeline(rels)
-    c += occurrence(relationships(c))
-    c += transitivity(triples(relationships(c)))
+    c = transitivity(triples(rels))
     c += timeline(relationships(c))
     c += occurrence(relationships(c))
     return c
