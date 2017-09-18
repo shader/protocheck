@@ -77,6 +77,8 @@ class Protocol(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
 
+        self.enactable = None
+
         self.parameters = {p['name']: Parameter(p, self) for p in schema['parameters']}
         self.keys = {p for p in self.parameters.values() \
                      if p.key or parent.type=='protocol' and p.name in parent.parameters and parent.parameters[p.name].key}
@@ -127,8 +129,10 @@ class Protocol(Base):
         return {k:v for r in self.references for k,v in r.messages.items()}
 
     def is_enactable(self):
-        return consistent(logic.And(self.correct, self.enactability)).sat()[0]
-            
+        if self.enactable is None:
+            self.enactable = consistent(logic.And(self.correct, self.enactability)).sat()[0]
+        return self.enactable
+
     def is_live(self):
         return self.is_enactable() and not consistent(self.dead_end).sat()[0]
     
