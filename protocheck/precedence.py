@@ -305,4 +305,7 @@ def consistent(*statements, exhaustive=False):
 
     stats["size"] += formula.size()
     stats["degree"] = max(stats["degree"], formula.degree())
-    return formula
+
+    result = formula.sat()[1]
+    if result:
+        return [k for k, v in result.items() if v]
