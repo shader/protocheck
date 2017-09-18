@@ -127,7 +127,7 @@ class Protocol(Base):
         return {k:v for r in self.references for k,v in r.messages.items()}
 
     def is_enactable(self):
-        return consistent(logic.And(self.correct, self.enactable)).sat()[0]
+        return consistent(logic.And(self.correct, self.enactability)).sat()[0]
             
     def is_live(self):
         return self.is_enactable() and not consistent(self.dead_end).sat()[0]
@@ -140,7 +140,7 @@ class Protocol(Base):
     def atomicity(self):
         return [logic.And(self.correct,
                           self.maximal,
-                          r.enactable,
+                          r.enactability,
                           q.incomplete) for q,r in self.refp]
 
     def check_atomicity(self):
@@ -214,7 +214,7 @@ class Protocol(Base):
 
     @property
     @logic.named
-    def enactable(self):
+    def enactability(self):
         return self._enactable()
 
     @property
@@ -300,7 +300,7 @@ class Message(Protocol):
 
     @property
     @logic.named
-    def enactable(self):
+    def enactability(self):
         return self.received
 
     @property
@@ -421,10 +421,10 @@ def handle_enactability(protocol, args):
     print("    stats: ", stats)
     if not e and not args.quiet or args.print_enactability:
         print("    Formula:")
-        print(json.dumps(logic.And(protocol.correct, protocol.enactable), default=str, sort_keys=True, indent=2))
+        print(json.dumps(logic.And(protocol.correct, protocol.enactability), default=str, sort_keys=True, indent=2))
         print()
     elif args.print_enactability:
-        pp.pprint([k for k,v in consistent(logic.And(protocol.correct, protocol.enactable)).sat()[1].items() if v])
+        pp.pprint([k for k,v in consistent(logic.And(protocol.correct, protocol.enactability)).sat()[1].items() if v])
 
     return e
 
