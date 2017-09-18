@@ -1,4 +1,5 @@
 from protocheck import logic
+from boolexpr import onehot0
 from protocheck.precedence import *
 from protocheck.bspl_parser import BsplParser
 from functools import partial
@@ -278,6 +279,10 @@ class Message(Protocol):
         if not self.recipient:
             raise LookupError("Role not found", schema['recipient'])
 
+    @property
+    def name(self):
+        return self.parent.name + "/" + self.schema['name']
+
     def instance(self, parent):
         return Message(self.schema, parent)
 
@@ -334,7 +339,7 @@ class Message(Protocol):
                 for p in self.nils]
         outs = [impl(self.sent, simultaneous(s(p), self.sent))
                 for p in self.outs]
-        return and_s(*(ins + nils + outs))
+        return and_(*(ins + nils + outs))
 
     @property
     @logic.named

@@ -1,3 +1,4 @@
+from boolexpr import not_
 from protocheck.spl import *
 from protocheck import precedence
 

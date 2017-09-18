@@ -2,7 +2,7 @@
 import os
 import sys
 import boolexpr as bx
-from boolexpr import *
+from boolexpr import and_, impl, or_, onehot, and_s
 from itertools import combinations, permutations, chain
 import re
 import configargparse
@@ -10,16 +10,18 @@ from protocheck import logic
 
 arg_parser = configargparse.get_argument_parser()
 arg_parser.add("-t", "--tseytin", action="store_true")
-arg_parser.add("-g", "--group-events", action="store_true")
-
+arg_parser.add("--exhaustive", action="store_true")
+ctx = bx.Context()
+aux = bx.Context()
+flatten = chain.from_iterable
 stats = {"size": 0, "degree": 0, "statements": 0}
+
+
 def reset_stats():
     stats["size"] = 0
     stats["degree"] = 0
     stats["statements"] = 0
 
-ctx = bx.Context()
-aux = bx.Context()
 
 def name(var):
     "convert name or var to name"
@@ -29,11 +31,13 @@ def name(var):
         return var.get('name')
     return str(var)
 
+
 def var(n):
     "convert name or var to var"
     if type(n) == bx.wrap.Variable:
         return n
     return ctx.get_var(n)
+
 
 def wrap(fn):
     "Apply function to all arguments on a function"
@@ -47,31 +51,39 @@ def wrap(fn):
 def pair(a, b):
     return tuple(sorted((a, b)))
 
+
 def pairs(xs):
     return combinations(xs, 2)
 
+
 def pairwise(fn, xs):
-    return map(lambda p: fn(*p), pairs(xs))
+    return list(map(lambda p: fn(*p), pairs(xs)))
+
 
 @wrap(name)
 def sequential(a, b, *rest):
     if rest:
-        return and_(*pairwise(sequential, args))
-    return var(a + ">" + b)
+        return and_(*pairwise(sequential, (a, b) + rest))
+    return var(a + "<" + b)
+
 
 @wrap(name)
 def simultaneous(a, b, *rest):
     if rest:
-        return and_(*pairwise(simultaneous, args))
-    
-    a,b = sorted((a,b)) #make sure we always use pairs in the same order
-    return var(a+ "*" +b)
+        return and_(*pairwise(simultaneous, (a, b) + rest))
+
+    a, b = sorted((a, b))  # make sure we always use pairs in the same order
+    return var(a + "*" + b)
+
 
 @wrap(var)
 def ordered(*args):
     "Arguments happen in some order; not simultaneously"
-    expr = or_(*[~v for v in args])
-    return or_(expr, *pairwise(lambda a,b: sequential(a,b) | sequential(b,a), args))
+    return and_(*pairwise(lambda a, b: ~a | ~b
+                          | sequential(a, b)
+                          | sequential(b, a),
+                          args))
+
 
 def causal(event, causes):
     event = var(event)
@@ -81,46 +93,159 @@ def causal(event, causes):
     return expr
 
 
+relation = {
+    '<': sequential,
+    '*': simultaneous,
+    '>': lambda a, b: sequential(b, a)
+}
+
+
 def relationships(statements):
     inputs = flatten([s.support() for s in statements])
     rs = {}
     for i in inputs:
-        if re.search('[>.*]', name(i)):
-            p = pair(*re.split('[>.*]', name(i)))
+        s = re.search('[<.*]', name(i))
+        if s:
+            rel = s.group()
+            t = tuple(name(i).split(rel))
+            p = pair(*t)
+            if rel == '<' and t != p:
+                rel = '>'
+
             if p in rs:
-                rs[p].append(i)
+                rs[p].add(rel)
             else:
-                rs[p] = [i]
+                rs[p] = {rel}
     return rs
 
-@wrap(var)
-def timeline(*events):
-    "A timeline is linear, and allows only a single relationship between each pair of events; a>b, b>a, or a*b"
-    return and_(
-        *pairwise(lambda a,b: impl(a & b, onehot(simultaneous(a,b),
-                                               sequential(a,b),
-                                               sequential(b,a))), events)
-    )
 
-@wrap(var)
-def occurrence(*events):
-    "Relationships between events imply that the events themselves occur"
-    return and_(*pairwise(lambda a,b: impl(or_(simultaneous(a,b),
-                                               sequential(a,b),
-                                               sequential(b,a)),
-                                           a & b),
-                          events))
+def timeline(relationships):
+    """A timeline is linear, and allows only a single relationship
+    between each pair of events; a<b, b<a, or a*b"""
+    clauses = []
+    for pair, rels in relationships.items():
+        clauses.append(impl(var(pair[0]) & var(pair[1]),
+                            onehot(*[relation[rel](*pair) for rel in rels])))
+    return clauses
 
-flatten = chain.from_iterable
+
+def occurrence(relationships):
+    clauses = []
+    for pair, rels in relationships.items():
+        for r in rels:
+            clauses.append(impl(relation[r](*pair), var(pair[0]) & var(pair[1])))
+    return clauses
+
+
+def invert(relationships):
+    inverses = {"*": "*",
+                ">": "<",
+                "<": ">"}
+    return set(map(lambda r: inverses[r], relationships))
+
+
+def normalize(p, relationships):
+    n = pair(*p)
+    if n == p:
+        return p, relationships
+    else:
+        # must have been backwards; invert relationships
+        return n, invert(relationships)
+
+
+def pivot(a, b):
+    """Given (a, b) and (b, c), returns b"""
+    intersection = set(a) & set(b)
+    if intersection:
+        return intersection.pop()
+
+
+def antipivot(a, b):
+    """Given (a, b) and (b, c), returns a"""
+    intersection = set(a) - set(b)
+    if intersection:
+        return intersection.pop()
+
+
+def outer(a, b):
+    r = antipivot(a, b)
+    s = antipivot(b, a)
+    if r and s:
+        return (r, s)
+
+
+def align(a, b):
+    """Given (a, b) and (c, b), returns ((a, b), (b, c))"""
+    p = pivot(a, b)
+    if not p:
+        return None, None
+    o = pair(*outer(a, b))
+    return (o[0], p), (p, o[1])
+
+
+def match(new, old, rels):
+    if new != old:
+        return invert(rels)
+    return rels
+
+
+def triples(relationships):
+    triples = {}
+    pairs = relationships.keys()
+    for r in pairs:
+        for s in pairs:
+            if r is not s and pivot(r, s):
+                a, b = align(r, s)
+                if antipivot(a, b) in r:
+                    triples[a + b[1:]] = (match(a, r, relationships[r]),
+                                          match(b, s, relationships[s]))
+                else:
+                    triples[a + b[1:]] = (match(a, s, relationships[s]),
+                                          match(b, r, relationships[r]))
+    return triples
+
+
+def transitivity(triples):
+    clauses = []
+    for triple, (rels_a, rels_b) in triples.items():
+        a = (triple[0], triple[1])
+        b = (triple[1], triple[2])
+        o = (triple[0], triple[2])
+        for rel_a in rels_a:
+            for rel_b in rels_b:
+                if rel_a == "*":
+                    clauses.append(impl(simultaneous(*a) & relation[rel_b](*b),
+                                        relation[rel_b](*o)))
+                elif rel_b == "*" or rel_b == rel_a:
+                    clauses.append(impl(relation[rel_a](*a) & relation[rel_b](*b),
+                                        relation[rel_a](*o)))
+    return clauses
+
+
+def consistency(statements):
+    rels = relationships(statements)
+    c = timeline(rels)
+    c += occurrence(relationships(c))
+    c += transitivity(triples(relationships(c)))
+    c += timeline(relationships(c))
+    c += occurrence(relationships(c))
+    return c
+
+
+def extract_events(statements):
+    inputs = flatten([s.support() for s in statements])
+    return set(flatten([re.split('[<.*]', name(i)) for i in inputs]))
+
 
 def transitive(fn):
-    def inner(a,b,c):
-        return and_(impl(fn(a,b) & fn(b,c), fn(a,c)),
-                    impl(simultaneous(a,b) & fn(b,c), fn(a,c)),
-                    impl(fn(a,b) & simultaneous(b,c), fn(a,c)))
+    def inner(a, b, c):
+        return and_(impl(fn(a, b) & fn(b, c), fn(a, c)),
+                    impl(simultaneous(a, b) & fn(b, c), fn(a, c)),
+                    impl(fn(a, b) & simultaneous(b, c), fn(a, c)))
     return inner
 
-def transitivity(*events):
+
+def exhaustive_transitivity(events):
     "Simultanaeity and sequentiality are transitive properties"
     clauses = []
     sim = transitive(simultaneous)
@@ -129,46 +254,49 @@ def transitivity(*events):
     clauses.extend([sim(*tup) for tup in combinations(events, 3)])
     clauses.extend([seq(*tup) for tup in permutations(events, 3)])
 
-    return and_s(*clauses)
+    return clauses
 
-def extract_events(*statements):
-    inputs = flatten([s.support() for s in statements])
-    return set(flatten([re.split('[>.*]', name(i)) for i in inputs]))
 
-def group_events(events):
-    grouped = {}
-    for e in events:
-        role, event = re.split(':', e)
-        if role in grouped:
-            grouped[role].append(e)
-        else:
-            grouped[role] = [e]
-    return grouped
+@wrap(var)
+def exhaustive_occurrence(*events):
+    "Relationships between events imply that the events themselves occur"
+    return pairwise(lambda a, b: impl(or_(simultaneous(a, b),
+                                          sequential(a, b),
+                                          sequential(b, a)),
+                                      a & b),
+                    events)
 
-def consistency(*events):
-    return and_(timeline(*events),
-                occurrence(*events),
-                transitivity(*events))
 
-def consistent(*statements):
+@wrap(var)
+def exhaustive_timeline(*events):
+    """
+    A timeline is linear, and allows only a single relationship between
+    each pair of events; a<b, b<a, or a*b
+    """
+    return pairwise(lambda a, b: impl(a & b, onehot(simultaneous(a, b),
+                                                    sequential(a, b),
+                                                    sequential(b, a))), events)
+
+
+def exhaustive_consistency(statements):
+    events = extract_events(statements)
+    return exhaustive_timeline(*events) \
+        + exhaustive_occurrence(*events) \
+        + exhaustive_transitivity(events)
+
+
+def consistent(*statements, exhaustive=False):
     options = arg_parser.parse_known_args()[0]  # apparently returns a tuple
     stats["statements"] += logic.count(statements)
     statements = [logic.compile(s) for s in statements]
 
-    events = extract_events(*statements)
-
-    clauses = []
-    if options.group_events:
-        groups = group_events(events)
-
-        for role in groups:
-            es = groups[role]
-            clause = consistency(*es)
-            clauses.append(clause)
+    clauses = statements
+    if options.exhaustive or exhaustive:
+        clauses += exhaustive_consistency(statements)
     else:
-        clauses.append(consistency(*events))
+        clauses += consistency(statements)
 
-    formula = and_(*(clauses + list(statements)))
+    formula = and_s(*clauses)
     if options.tseytin:
         formula = formula.tseytin(aux)
 
