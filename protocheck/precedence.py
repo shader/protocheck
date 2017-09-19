@@ -226,7 +226,9 @@ def transitivity(triples):
 
 def consistency(statements):
     rels = relationships(statements)
-    c = transitivity(triples(rels))
+    c = timeline(rels)
+    c += occurrence(relationships(c))
+    c += transitivity(triples(relationships(c)))
     c += timeline(relationships(c))
     c += occurrence(relationships(c))
     return c
@@ -296,13 +298,11 @@ def cycle(enactment):
     precedes = {}
 
     def propagate_forward(a, b):
-        print("precedes: ", precedes)
         add(precedes, b, a)
         for i in follows.get(b, []):
             propagate_forward(a, i)
 
     def propagate_backward(a, b):
-        print("follows: ", follows)
         add(follows, a, b)
         for i in precedes.get(a, []):
             propagate_backward(i, b)
