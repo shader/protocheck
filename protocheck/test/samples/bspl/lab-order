@@ -1,0 +1,61 @@
+CreateOrder {
+  roles S, P, PS, C, CS, L, LS
+  parameters out complaint key, out results
+
+  S -> P: Complain[out complaint]
+  P -> PS: EnterRequest[in complaint, out order]
+
+  ProviderCollection(P, L, order, specimen)
+  LabCollection(S, P, L, order, specimen)
+  ThirdPartyCollection(S, P, C, L, order, specimen) 
+ 
+  GetOrder(L,P, subject, order)
+  L -> C: NotifyUnsuitable[in order, in specimen, out unsuitable]
+  L -> C: NotifyReceived[in order, in specimen, out received]
+
+  L -> P: Results[in order, out results]
+  L -> P: ResultsAvailable[in order, out result-id]
+  QueryResults(P, L, order, result-id, results)
+
+  P -> S: AllReceived[in request, out results]
+}
+
+ProviderCollection {
+  roles P, L
+  parameters in order key, out specimen
+
+  P -> L: Ship[in order, out specimen]
+}
+
+LabCollection {
+  roles S, P, L
+  parameters in order key, out specimen
+
+  P -> S: Instructions[in order, out instructions]
+  S -> L: Visit[in order, in instructions, out specimen]
+}
+
+ThirdPartyCollection {
+  roles S, P, C, L
+  parameters in order key, out specimen
+
+  P -> S: Instructions[in order, out instructions]
+  S -> C: SetupAppointment[in order, in instructions, out appointment]
+  C -> L: Specimen[in order, in appointment, out specimen]
+}
+
+GetOrder {
+  roles R, P
+  parameters out subject key, out order
+
+  R -> P: QueryOrder[out subject]
+  P -> R: Order[in subject, out order]
+}
+
+QueryResults {
+  roles P, L
+  parameters in order, in results-id, out results
+
+  P -> L: Query[in order, in results-id]
+  L -> P: Results[in order, in results-id, out results]
+}
