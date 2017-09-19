@@ -77,6 +77,8 @@ class Protocol(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
 
+        self.enactable = None
+
         self.parameters = {p['name']: Parameter(p, self) for p in schema['parameters']}
         self.keys = {p for p in self.parameters.values() \
                      if p.key or parent.type=='protocol' and p.name in parent.parameters and parent.parameters[p.name].key}
@@ -127,25 +129,27 @@ class Protocol(Base):
         return {k:v for r in self.references for k,v in r.messages.items()}
 
     def is_enactable(self):
-        return consistent(logic.And(self.correct, self.enactable)).sat()[0]
-            
+        if self.enactable is None:
+            self.enactable = consistent(logic.And(self.correct, self.enactability))
+        return self.enactable
+
     def is_live(self):
-        return self.is_enactable() and not consistent(self.dead_end).sat()[0]
+        return self.is_enactable() and not consistent(self.dead_end)
     
     def is_safe(self):
         #prove there are no unsafe enactments
-        return not consistent(self.unsafe).sat()[0]
+        return not consistent(self.unsafe)
 
     @property
     def atomicity(self):
         return [logic.And(self.correct,
                           self.maximal,
-                          r.enactable,
+                          r.enactability,
                           q.incomplete) for q,r in self.refp]
 
     def check_atomicity(self):
         for formula in self.atomicity:
-            s = consistent(formula).sat()[1]
+            s = consistent(formula)
             if s: return s, formula
         return None, None
 
@@ -214,7 +218,7 @@ class Protocol(Base):
 
     @property
     @logic.named
-    def enactable(self):
+    def enactability(self):
         return self._enactable()
 
     @property
@@ -300,7 +304,7 @@ class Message(Protocol):
 
     @property
     @logic.named
-    def enactable(self):
+    def enactability(self):
         return self.received
 
     @property
@@ -417,42 +421,44 @@ def strip_latex(spec):
 def handle_enactability(protocol, args):
     reset_stats()
     e = protocol.is_enactable()
-    print("  Enactable: ", e)
+    print("  Enactable: ", bool(e))
     print("    stats: ", stats)
     if not e and not args.quiet or args.print_enactability:
         print("    Formula:")
-        print(json.dumps(logic.And(protocol.correct, protocol.enactable), default=str, sort_keys=True, indent=2))
+        print(json.dumps(logic.And(protocol.correct, protocol.enactability), default=str, sort_keys=True, indent=2))
         print()
-    elif args.print_enactability:
-        pp.pprint([k for k,v in consistent(logic.And(protocol.correct, protocol.enactable)).sat()[1].items() if v])
+    elif e and args.print_enactability:
+        pp.pprint(e)
 
     return e
 
 def handle_liveness(protocol, args):
     reset_stats()
-    l = protocol.is_live()
-    print("  Live: ", l)
-    print("    stats: ", stats)
-    if not l and not args.quiet or args.print_liveness:
-        print("    Formula:")
-        print(json.dumps(protocol.dead_end, default=str, sort_keys=True, indent=2))
-    if not l and not args.quiet:
-        print("\n    Violation:")
-        pp.pprint([k for k,v in consistent(protocol.dead_end).sat()[1].items() if v])
-        print()
+    if protocol.is_enactable():
+        violation = consistent(protocol.dead_end)
+        print("  Live: ", not violation)
+        print("    stats: ", stats)
+        if violation and not args.quiet or args.print_liveness:
+            print("    Formula:")
+            print(json.dumps(protocol.dead_end, default=str,
+                             sort_keys=True, indent=2))
+        if violation and not args.quiet:
+            print("\n    Violation:")
+            pp.pprint(violation)
+            print()
 
 def handle_safety(protocol, args):
     reset_stats()
     expr = protocol.unsafe
-    us = consistent(expr).sat()[1]
-    print("  Safe: ", not us)
+    violation = consistent(expr)
+    print("  Safe: ", not violation)
     print("    stats: ", stats)
-    if us and not args.quiet or args.print_safety:
+    if violation and not args.quiet or args.print_safety:
         print("\nFormula:")
         print(json.dumps(expr, default=str, sort_keys=True, indent=2))
-    if us and not args.quiet:
+    if violation and not args.quiet:
         print("\nViolation:")
-        pp.pprint([k for k,v in us.items() if v])
+        pp.pprint(violation)
         print()
 
 def handle_atomicity(protocol,args):
@@ -465,7 +471,7 @@ def handle_atomicity(protocol,args):
         print(json.dumps(protocol.atomicity(), default=str, sort_keys=True, indent=2))
     if a and not args.quiet:
         print("\nViolation:")
-        pp.pprint([k for k,v in a.items() if v])
+        pp.pprint(a)
         print("\nFormula:")
         print(json.dumps(formula, default=str, sort_keys=True, indent=2))
         print()

@@ -11,6 +11,8 @@ from protocheck import logic
 arg_parser = configargparse.get_argument_parser()
 arg_parser.add("-t", "--tseytin", action="store_true")
 arg_parser.add("--exhaustive", action="store_true")
+arg_parser.add("--depth", default=1, help="Longest transitive relationship to generate. \
+Only need log2(max-chain) to prevent cycles.")
 ctx = bx.Context()
 aux = bx.Context()
 flatten = chain.from_iterable
@@ -285,6 +287,53 @@ def exhaustive_consistency(statements):
         + exhaustive_transitivity(events)
 
 
+def cycle(enactment):
+    def add(s, k, v):
+        if k not in s:
+            s[k] = {v}
+        else:
+            s[k].add(v)
+
+    follows = {}
+    precedes = {}
+
+    def propagate(item, start, step, acc):
+        def inner(current, queue=set(), visited=set()):
+            add(acc, current, item)
+            visited.add(current)
+            queue = queue.union(step.get(current, set())) - visited
+            if queue:
+                inner(queue.pop(), queue, visited)
+        inner(start)
+
+    for e in enactment:
+        e = name(e)
+        if '<' in e:
+            a, b = e.split('<')
+            if b in precedes.get(a, []):
+                return precedes[a].union({a})
+            else:
+                propagate(a, b, follows, precedes)
+
+            if a in follows.get(b, []):
+                return follows[b].union({b})
+            else:
+                propagate(b, a, precedes, follows)
+
+
+def solve(clauses, tseytin=False):
+    formula = and_s(*clauses)
+    if tseytin:
+        formula = formula.tseytin(aux)
+
+    stats["size"] += formula.size()
+    stats["degree"] = max(stats["degree"], formula.degree())
+
+    result = formula.sat()[1]
+    if result:
+        return [k for k, v in result.items() if v]
+
+
 def consistent(*statements, exhaustive=False):
     options = arg_parser.parse_known_args()[0]  # apparently returns a tuple
     stats["statements"] += logic.count(statements)
@@ -293,13 +342,13 @@ def consistent(*statements, exhaustive=False):
     clauses = statements
     if options.exhaustive or exhaustive:
         clauses += exhaustive_consistency(statements)
+        return solve(clauses, tseytin=options.tseytin)
     else:
-        clauses += consistency(statements)
-
-    formula = and_s(*clauses)
-    if options.tseytin:
-        formula = formula.tseytin(aux)
-
-    stats["size"] += formula.size()
-    stats["degree"] = max(stats["degree"], formula.degree())
-    return formula
+        depth = int(options.depth)
+        for d in range(depth):
+            clauses += consistency(clauses)
+        result = solve(clauses, tseytin=options.tseytin)
+        while result and cycle(result):
+            clauses += consistency(clauses)
+            result = solve(clauses, tseytin=options.tseytin)
+        return result
