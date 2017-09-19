@@ -297,15 +297,14 @@ def cycle(enactment):
     follows = {}
     precedes = {}
 
-    def propagate_forward(a, b):
-        add(precedes, b, a)
-        for i in follows.get(b, []):
-            propagate_forward(a, i)
-
-    def propagate_backward(a, b):
-        add(follows, a, b)
-        for i in precedes.get(a, []):
-            propagate_backward(i, b)
+    def propagate(item, start, step, acc):
+        def inner(current, queue=set(), visited=set()):
+            add(acc, current, item)
+            visited.add(current)
+            queue = queue.union(step.get(current, set())) - visited
+            if queue:
+                inner(queue.pop(), queue, visited)
+        inner(start)
 
     for e in enactment:
         e = name(e)
@@ -314,12 +313,12 @@ def cycle(enactment):
             if b in precedes.get(a, []):
                 return precedes[a].union({a})
             else:
-                propagate_forward(a, b)
+                propagate(a, b, follows, precedes)
 
             if a in follows.get(b, []):
                 return follows[b].union({b})
             else:
-                propagate_backward(a, b)
+                propagate(b, a, precedes, follows)
 
 
 def solve(clauses, tseytin=False):
