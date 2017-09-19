@@ -126,6 +126,8 @@ def test_consistent():
     # check basic consistency
     assert consistent(var('a'), var('b'), sequential('a', 'b'))
 
+
+def test_consistent2():
     # see how long a causal loop can be before transitivity stops working
     for i in range(1, 5):
         clauses = [sequential(to_char(i), 'a')] + chain(i)
