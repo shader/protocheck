@@ -349,8 +349,6 @@ def consistent(*statements, exhaustive=False):
             clauses += consistency(clauses)
         result = solve(clauses, tseytin=options.tseytin)
         while result and cycle(result):
-            depth += 1
-            print(depth)
             clauses += consistency(clauses)
             result = solve(clauses, tseytin=options.tseytin)
         return result
