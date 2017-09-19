@@ -285,22 +285,9 @@ def exhaustive_consistency(statements):
         + exhaustive_transitivity(events)
 
 
-def consistent(*statements, exhaustive=False):
-    options = arg_parser.parse_known_args()[0]  # apparently returns a tuple
-    stats["statements"] += logic.count(statements)
-    statements = [logic.compile(s) for s in statements]
-
-    clauses = statements
-    if options.exhaustive or exhaustive:
-        clauses += exhaustive_consistency(statements)
-    else:
-        depth = int(options.depth)
-        for d in range(depth):
-            clauses += consistency(clauses)
-            print("depth: ", d)
-
+def solve(clauses, tseytin=False):
     formula = and_s(*clauses)
-    if options.tseytin:
+    if tseytin:
         formula = formula.tseytin(aux)
 
     stats["size"] += formula.size()
@@ -309,3 +296,20 @@ def consistent(*statements, exhaustive=False):
     result = formula.sat()[1]
     if result:
         return [k for k, v in result.items() if v]
+
+
+def consistent(*statements, exhaustive=False):
+    options = arg_parser.parse_known_args()[0]  # apparently returns a tuple
+    stats["statements"] += logic.count(statements)
+    statements = [logic.compile(s) for s in statements]
+
+    clauses = statements
+    if options.exhaustive or exhaustive:
+        clauses += exhaustive_consistency(statements)
+        return solve(clauses, tseytin=options.tseytin)
+    else:
+        depth = int(options.depth)
+        for d in range(depth):
+            clauses += consistency(clauses)
+        result = solve(clauses, tseytin=options.tseytin)
+        return result
