@@ -13,7 +13,8 @@ from protocheck.precedence import (
     match,
     triples,
     consistent,
-    ordered
+    ordered,
+    cycle
 )
 
 
@@ -139,3 +140,9 @@ def test_exhaustive_consistent():
     for i in range(1, 5):
         clauses = [sequential(to_char(i), 'a')] + chain(i)
         assert not consistent(and_(*clauses), exhaustive=True)
+
+
+def test_cycle():
+    assert not cycle(['a<b', 'b<c'])
+    assert cycle(['a<b', 'b<a'])
+    assert not cycle(['a<b', 'b<c', 'c<a'])

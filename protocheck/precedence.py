@@ -285,6 +285,42 @@ def exhaustive_consistency(statements):
         + exhaustive_transitivity(events)
 
 
+def cycle(enactment):
+    def add(s, k, v):
+        if k not in s:
+            s[k] = {v}
+        else:
+            s[k].add(v)
+
+    follows = {}
+    precedes = {}
+
+    def propagate_forward(a, b):
+        print("precedes: ", precedes)
+        add(precedes, b, a)
+        for i in follows.get(b, []):
+            propagate_forward(a, i)
+
+    def propagate_backward(a, b):
+        print("follows: ", follows)
+        add(follows, a, b)
+        for i in precedes.get(a, []):
+            propagate_backward(i, b)
+
+    for e in enactment:
+        if '<' in e:
+            a, b = e.split('<')
+            if b in precedes.get(a, []):
+                return precedes[a].union({a})
+            else:
+                propagate_forward(a, b)
+
+            if a in follows.get(b, []):
+                return follows[b].union({b})
+            else:
+                propagate_backward(a, b)
+
+
 def solve(clauses, tseytin=False):
     formula = and_s(*clauses)
     if tseytin:
