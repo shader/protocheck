@@ -308,6 +308,7 @@ def cycle(enactment):
             propagate_backward(i, b)
 
     for e in enactment:
+        e = name(e)
         if '<' in e:
             a, b = e.split('<')
             if b in precedes.get(a, []):
