@@ -273,6 +273,13 @@ class Protocol(Base):
     def incomplete(self):
         return ~self._complete()
 
+    @property
+    def is_entrypoint(self):
+        "A protocol is an entry point if it does not have any \
+        dependencies on sibling protocols"
+        return not self.ins - self.parent.ins
+
+
 class Message(Protocol):
     def __init__(self, schema, parent):
         super().__init__(schema, parent)
