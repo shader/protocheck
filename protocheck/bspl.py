@@ -422,7 +422,8 @@ def handle_enactability(protocol, args):
     reset_stats()
     e = protocol.is_enactable()
     print("  Enactable: ", bool(e))
-    print("    stats: ", stats)
+    if args.verbose or args.stats:
+        print("    stats: ", stats)
     if not e and not args.quiet or args.verbose:
         print("    Formula:")
         print(json.dumps(logic.And(protocol.correct, protocol.enactability), default=str, sort_keys=True, indent=2))
@@ -437,7 +438,8 @@ def handle_liveness(protocol, args):
     if protocol.is_enactable():
         violation = consistent(protocol.dead_end)
         print("  Live: ", not violation)
-        print("    stats: ", stats)
+        if args.verbose or args.stats:
+            print("    stats: ", stats)
         if violation and not args.quiet or args.verbose:
             print("    Formula:")
             print(json.dumps(protocol.dead_end, default=str,
@@ -452,7 +454,8 @@ def handle_safety(protocol, args):
     expr = protocol.unsafe
     violation = consistent(expr)
     print("  Safe: ", not violation)
-    print("    stats: ", stats)
+    if args.verbose or args.stats:
+        print("    stats: ", stats)
     if violation and not args.quiet or args.verbose:
         print("\nFormula:")
         print(json.dumps(expr, default=str, sort_keys=True, indent=2))
@@ -465,7 +468,8 @@ def handle_atomicity(protocol,args):
     reset_stats()
     a, formula = protocol.check_atomicity()
     print("  Atomic: ", not a)
-    print("    stats: ", stats)
+    if args.verbose or args.stats:
+        print("    stats: ", stats)
     if args.verbose:
         print("\nFormula:")
         print(json.dumps(protocol.atomicity(), default=str, sort_keys=True, indent=2))
@@ -488,6 +492,8 @@ def handle_all(protocol, args):
 if __name__ == "__main__":
     parser = configargparse.get_argument_parser()
     parser.description = 'BSPL Protocol property checker'
+    parser.add('-s', '--stats', action="store_true",
+               help='Print statistics')
     parser.add('-v', '--verbose', action="store_true",
                help='Print additional details: spec, formulas, stats, etc.')
     parser.add('-q', '--quiet', action="store_true",
