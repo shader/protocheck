@@ -498,7 +498,8 @@ if __name__ == "__main__":
                help='Print additional details: spec, formulas, stats, etc.')
     parser.add('-q', '--quiet', action="store_true",
                help='Prevent printing of violation and formula output')
-    parser.add('-f','--filter', default='.*', help='Only process protocols matching regexp')
+    parser.add('-f', '--filter', default='.*',
+               help='Only process protocols matching regexp')
     parser.add('action', help='Primary action to perform')
     parser.add('input', nargs='+', help='Protocol description file(s)')
     args = parser.parse()
