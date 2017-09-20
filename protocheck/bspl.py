@@ -165,7 +165,8 @@ class Protocol(Base):
                 q,r = queue.pop(0) #get first reference
                 if (q, r) not in pairs:
                     pairs.add((q, r))
-                    return recur(queue + [(r,s) for s in r.references], pairs)
+                    return recur(queue + [(r,s) for s in r.references
+                                          if type(s) is not Message or s.is_entrypoint], pairs)
                 else:
                     return recur(queue, pairs)
 
@@ -272,6 +273,13 @@ class Protocol(Base):
     @logic.named
     def incomplete(self):
         return ~self._complete()
+
+    @property
+    def is_entrypoint(self):
+        "A protocol is an entry point if it does not have any \
+        dependencies on sibling protocols"
+        return not self.ins - self.parent.ins
+
 
 class Message(Protocol):
     def __init__(self, schema, parent):
