@@ -472,7 +472,8 @@ def handle_atomicity(protocol,args):
         print("    stats: ", stats)
     if args.verbose:
         print("\nFormula:")
-        print(json.dumps(protocol.atomicity(), default=str, sort_keys=True, indent=2))
+        print(json.dumps(protocol.atomicity,
+                         default=str, sort_keys=True, indent=2))
     if a and not args.quiet:
         print("\nViolation:")
         pp.pprint(a)
