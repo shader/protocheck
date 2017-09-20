@@ -165,7 +165,8 @@ class Protocol(Base):
                 q,r = queue.pop(0) #get first reference
                 if (q, r) not in pairs:
                     pairs.add((q, r))
-                    return recur(queue + [(r,s) for s in r.references], pairs)
+                    return recur(queue + [(r,s) for s in r.references
+                                          if type(s) is not Message or s.is_entrypoint], pairs)
                 else:
                     return recur(queue, pairs)
 
