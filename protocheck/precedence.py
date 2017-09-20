@@ -321,13 +321,18 @@ def cycle(enactment):
                 propagate(b, a, precedes, follows)
 
 
-def solve(clauses, tseytin=False):
+def solve(clauses, options=None, depth=None):
     formula = and_s(*clauses)
-    if tseytin:
+    if options and options.tseytin:
         formula = formula.tseytin(aux)
 
     stats["size"] += formula.size()
     stats["degree"] = max(stats["degree"], formula.degree())
+    if options and options.verbose:
+        s = {"size": formula.size(), "degree": formula.degree()}
+        if depth:
+            s["depth"] = depth
+        print(s)
 
     result = formula.sat()[1]
     if result:
@@ -342,13 +347,14 @@ def consistent(*statements, exhaustive=False):
     clauses = statements
     if options.exhaustive or exhaustive:
         clauses += exhaustive_consistency(statements)
-        return solve(clauses, tseytin=options.tseytin)
+        return solve(clauses, options, depth="exhaustive")
     else:
         depth = int(options.depth)
         for d in range(depth):
             clauses += consistency(clauses)
-        result = solve(clauses, tseytin=options.tseytin)
+        result = solve(clauses, options, depth)
         while result and cycle(result):
+            depth += 1
             clauses += consistency(clauses)
-            result = solve(clauses, tseytin=options.tseytin)
+            result = solve(clauses, options, depth)
         return result
