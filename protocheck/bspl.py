@@ -435,19 +435,19 @@ def handle_enactability(protocol, args):
 
 def handle_liveness(protocol, args):
     reset_stats()
-    if protocol.is_enactable():
-        violation = consistent(protocol.dead_end)
-        print("  Live: ", not violation)
-        if args.verbose or args.stats:
-            print("    stats: ", stats)
-        if violation and not args.quiet or args.verbose:
-            print("    Formula:")
-            print(json.dumps(protocol.dead_end, default=str,
-                             sort_keys=True, indent=2))
-        if violation and not args.quiet:
-            print("\n    Violation:")
-            pp.pprint(violation)
-            print()
+    e =  protocol.is_enactable()
+    violation = consistent(protocol.dead_end)
+    print("  Live: ", e and not violation)
+    if args.verbose or args.stats:
+        print("    stats: ", stats)
+    if violation and not args.quiet or args.verbose:
+        print("    Formula:")
+        print(json.dumps(protocol.dead_end, default=str,
+                         sort_keys=True, indent=2))
+    if violation and not args.quiet:
+        print("\n    Violation:")
+        pp.pprint(violation)
+        print()
 
 def handle_safety(protocol, args):
     reset_stats()
