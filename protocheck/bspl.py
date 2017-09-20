@@ -423,11 +423,11 @@ def handle_enactability(protocol, args):
     e = protocol.is_enactable()
     print("  Enactable: ", bool(e))
     print("    stats: ", stats)
-    if not e and not args.quiet or args.print_enactability:
+    if not e and not args.quiet or args.verbose:
         print("    Formula:")
         print(json.dumps(logic.And(protocol.correct, protocol.enactability), default=str, sort_keys=True, indent=2))
         print()
-    elif e and args.print_enactability:
+    elif e and args.verbose:
         pp.pprint(e)
 
     return e
@@ -438,7 +438,7 @@ def handle_liveness(protocol, args):
         violation = consistent(protocol.dead_end)
         print("  Live: ", not violation)
         print("    stats: ", stats)
-        if violation and not args.quiet or args.print_liveness:
+        if violation and not args.quiet or args.verbose:
             print("    Formula:")
             print(json.dumps(protocol.dead_end, default=str,
                              sort_keys=True, indent=2))
@@ -453,7 +453,7 @@ def handle_safety(protocol, args):
     violation = consistent(expr)
     print("  Safe: ", not violation)
     print("    stats: ", stats)
-    if violation and not args.quiet or args.print_safety:
+    if violation and not args.quiet or args.verbose:
         print("\nFormula:")
         print(json.dumps(expr, default=str, sort_keys=True, indent=2))
     if violation and not args.quiet:
@@ -466,7 +466,7 @@ def handle_atomicity(protocol,args):
     a, formula = protocol.check_atomicity()
     print("  Atomic: ", not a)
     print("    stats: ", stats)
-    if args.print_atomicity:
+    if args.verbose:
         print("\nFormula:")
         print(json.dumps(protocol.atomicity(), default=str, sort_keys=True, indent=2))
     if a and not args.quiet:
@@ -479,15 +479,9 @@ def handle_atomicity(protocol,args):
 if __name__ == "__main__":
     parser = configargparse.get_argument_parser()
     parser.description = 'BSPL Protocol property checker'
-    parser.add('-e','--print-enactability', action="store_true",
-               help='Print enactment that satisfies enactability')
-    parser.add('-l','--print-liveness', action="store_true",
-               help='Print liveness formula even if the check succeeds')
-    parser.add('-s','--print-safety', action="store_true",
-               help='Print safety formula')
-    parser.add('-a','--print-atomicity', action="store_true",
-               help='Print atomicity formulas')
-    parser.add('-q','--quiet', action="store_true",
+    parser.add('-v', '--verbose', action="store_true",
+               help='Print additional details: spec, formulas, stats, etc.')
+    parser.add('-q', '--quiet', action="store_true",
                help='Prevent printing of violation and formula output')
     parser.add('-f','--filter', default='.*', help='Only process protocols matching regexp')
     parser.add('input', nargs='+', help='Protocol description file(s)')
