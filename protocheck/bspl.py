@@ -476,6 +476,15 @@ def handle_atomicity(protocol,args):
         print(json.dumps(formula, default=str, sort_keys=True, indent=2))
         print()
 
+
+def handle_all(protocol, args):
+    enactable = handle_enactability(protocol, args)
+    if enactable:
+        handle_liveness(protocol, args)
+        handle_safety(protocol, args)
+        handle_atomicity(protocol, args)
+
+
 if __name__ == "__main__":
     parser = configargparse.get_argument_parser()
     parser.description = 'BSPL Protocol property checker'
@@ -484,20 +493,25 @@ if __name__ == "__main__":
     parser.add('-q', '--quiet', action="store_true",
                help='Prevent printing of violation and formula output')
     parser.add('-f','--filter', default='.*', help='Only process protocols matching regexp')
+    parser.add('action', help='Primary action to perform')
     parser.add('input', nargs='+', help='Protocol description file(s)')
     args = parser.parse()
+
+    actions = {
+        'enactability': handle_enactability,
+        'liveness': handle_liveness,
+        'safety': handle_safety,
+        'atomicity': handle_atomicity,
+        'all': handle_all
+    }
 
     for path in args.input:
         spec = load_file(path)
         for protocol in spec.protocols.values():
             if re.match(args.filter, protocol.name):
                 print("\n%s (%s): " % (protocol.name, path))
+                actions[args.action](protocol, args)
 
-                enactable = handle_enactability(protocol, args)
-                if enactable:
-                    handle_liveness(protocol,args)
-                handle_safety(protocol,args)
-                handle_atomicity(protocol,args)
 
     if not spec.protocols:
         print("No protocols parsed from file: ", args.input)
