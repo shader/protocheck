@@ -426,6 +426,14 @@ def strip_latex(spec):
     spec = re.sub(r'\$\\mapsto\$', r'->', spec)
     return spec
 
+
+def print_formula(*formulas):
+    print("\nFormula:")
+    print(json.dumps(logic.merge(*formulas),
+                     default=str, sort_keys=True, indent=2))
+    print()
+
+
 def handle_enactability(protocol, args):
     reset_stats()
     e = protocol.is_enactable()
@@ -433,9 +441,7 @@ def handle_enactability(protocol, args):
     if args.verbose or args.stats:
         print("    stats: ", stats)
     if not e and not args.quiet or args.verbose:
-        print("    Formula:")
-        print(json.dumps(logic.And(protocol.correct, protocol.enactability), default=str, sort_keys=True, indent=2))
-        print()
+        print_formula(logic.And(protocol.correct, protocol.enactability))
     elif e and args.verbose:
         pp.pprint(e)
 
@@ -449,9 +455,7 @@ def handle_liveness(protocol, args):
     if args.verbose or args.stats:
         print("    stats: ", stats)
     if violation and not args.quiet or args.verbose:
-        print("    Formula:")
-        print(json.dumps(protocol.dead_end, default=str,
-                         sort_keys=True, indent=2))
+        print_formula(protocol.dead_end)
     if violation and not args.quiet:
         print("\n    Violation:")
         pp.pprint(violation)
@@ -465,8 +469,7 @@ def handle_safety(protocol, args):
     if args.verbose or args.stats:
         print("    stats: ", stats)
     if violation and not args.quiet or args.verbose:
-        print("\nFormula:")
-        print(json.dumps(expr, default=str, sort_keys=True, indent=2))
+        print_formula(expr)
     if violation and not args.quiet:
         print("\nViolation:")
         pp.pprint(violation)
@@ -479,9 +482,7 @@ def handle_atomicity(protocol,args):
     if args.verbose or args.stats:
         print("    stats: ", stats)
     if args.verbose:
-        print("\nFormula:")
-        print(json.dumps(protocol.atomicity,
-                         default=str, sort_keys=True, indent=2))
+        print_formula(*protocol.atomicity)
     if a and not args.quiet:
         print("\nViolation:")
         pp.pprint(a)
