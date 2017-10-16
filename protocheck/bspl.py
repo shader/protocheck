@@ -499,7 +499,7 @@ def handle_all(protocol, args):
         handle_atomicity(protocol, args)
 
 
-if __name__ == "__main__":
+def main():
     parser = configargparse.get_argument_parser()
     parser.description = 'BSPL Protocol property checker'
     parser.add('-s', '--stats', action="store_true",
@@ -532,3 +532,7 @@ if __name__ == "__main__":
 
     if not spec.protocols:
         print("No protocols parsed from file: ", args.input)
+
+
+if __name__ == "__main__":
+    main()

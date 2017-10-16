@@ -27,6 +27,11 @@ def requireModules(moduleNames=None):
 
     return moduleNames
 
+
+entry_points = {
+    'console_scripts': ['bspl = protocheck.bspl:main'],
+}
+
 setup(
     name='protocheck',
     version=version,
@@ -34,16 +39,16 @@ setup(
     author='Samuel Christie',
     author_email='schrist@ncsu.edu',
 
-    description='Python module',
-    long_description=open('README.txt').read(),
+    description='Protocol verification tool for BSPL',
+    long_description=open('README.org').read(),
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers'
     ],
 
-    install_requires=requireModules([
+    entry_points=entry_points,
 
-    ]),
+    install_requires=requireModules(),
 
     test_suite='protocheck'
 )
