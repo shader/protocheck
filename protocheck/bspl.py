@@ -9,6 +9,7 @@ import re
 import pprint
 import json
 import textwrap
+import time
 pp = pprint.PrettyPrinter()
 
 def flatten(nested):
@@ -427,6 +428,19 @@ def strip_latex(spec):
     return spec
 
 
+def track_time(fn):
+    def wrapper(*args, **kwargs):
+        if kwargs.pop('time', False):
+            start = time.clock()
+            v = fn(*args, **kwargs)
+            stop = time.clock()
+            print("    time:", stop-start, "s")
+            return v
+        else:
+            return fn(*args, **kwargs)
+    return wrapper
+
+
 def print_formula(*formulas):
     print("\nFormula:")
     print(json.dumps(logic.merge(*formulas),
@@ -434,6 +448,7 @@ def print_formula(*formulas):
     print()
 
 
+@track_time
 def handle_enactability(protocol, args):
     reset_stats()
     e = protocol.is_enactable()
@@ -447,6 +462,8 @@ def handle_enactability(protocol, args):
 
     return e
 
+
+@track_time
 def handle_liveness(protocol, args):
     reset_stats()
     e =  protocol.is_enactable()
@@ -461,6 +478,8 @@ def handle_liveness(protocol, args):
         pp.pprint(violation)
         print()
 
+
+@track_time
 def handle_safety(protocol, args):
     reset_stats()
     expr = protocol.unsafe
@@ -475,6 +494,8 @@ def handle_safety(protocol, args):
         pp.pprint(violation)
         print()
 
+
+@track_time
 def handle_atomicity(protocol,args):
     reset_stats()
     a, formula = protocol.check_atomicity()
@@ -491,12 +512,12 @@ def handle_atomicity(protocol,args):
         print()
 
 
-def handle_all(protocol, args):
-    enactable = handle_enactability(protocol, args)
+def handle_all(protocol, args, **kwargs):
+    enactable = handle_enactability(protocol, args, **kwargs)
     if enactable:
-        handle_liveness(protocol, args)
-        handle_safety(protocol, args)
-        handle_atomicity(protocol, args)
+        handle_liveness(protocol, args, **kwargs)
+        handle_safety(protocol, args, **kwargs)
+        handle_atomicity(protocol, args, **kwargs)
 
 
 def main():
@@ -510,6 +531,8 @@ def main():
                help='Prevent printing of violation and formula output')
     parser.add('-f', '--filter', default='.*',
                help='Only process protocols matching regexp')
+    parser.add('-t', '--time', action="store_true",
+               help='Time property verification')
     parser.add('action', help='Primary action to perform')
     parser.add('input', nargs='+', help='Protocol description file(s)')
     args = parser.parse()
@@ -527,7 +550,7 @@ def main():
         for protocol in spec.protocols.values():
             if re.match(args.filter, protocol.name):
                 print("\n%s (%s): " % (protocol.name, path))
-                actions[args.action](protocol, args)
+                actions[args.action](protocol, args, time=args.time)
 
 
     if not spec.protocols:
