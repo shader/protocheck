@@ -503,6 +503,14 @@ def handle_all(protocol, args, **kwargs):
 
 
 def main():
+    actions = {
+        'enactability': handle_enactability,
+        'liveness': handle_liveness,
+        'safety': handle_safety,
+        'atomicity': handle_atomicity,
+        'all': handle_all
+    }
+
     parser = configargparse.get_argument_parser()
     parser.description = 'BSPL Protocol property checker'
     parser.add('-s', '--stats', action="store_true",
@@ -513,17 +521,9 @@ def main():
                help='Prevent printing of violation and formula output')
     parser.add('-f', '--filter', default='.*',
                help='Only process protocols matching regexp')
-    parser.add('action', help='Primary action to perform')
+    parser.add('action', help='Primary action to perform', choices=actions.keys())
     parser.add('input', nargs='+', help='Protocol description file(s)')
     args = parser.parse()
-
-    actions = {
-        'enactability': handle_enactability,
-        'liveness': handle_liveness,
-        'safety': handle_safety,
-        'atomicity': handle_atomicity,
-        'all': handle_all
-    }
 
     for path in args.input:
         spec = load_file(path)
