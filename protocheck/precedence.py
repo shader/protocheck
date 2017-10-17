@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-import os
-import sys
+import time
 import boolexpr as bx
 from boolexpr import and_, impl, or_, onehot, and_s
 from itertools import combinations, permutations, chain
@@ -10,8 +9,8 @@ from protocheck import logic
 
 arg_parser = configargparse.get_argument_parser()
 arg_parser.add("-t", "--tseytin", action="store_true")
-arg_parser.add("--exhaustive", action="store_true")
-arg_parser.add("--depth", default=1, help="Longest transitive relationship to generate. \
+arg_parser.add("-e", "--exhaustive", action="store_true")
+arg_parser.add("-d", "--depth", default=1, help="Longest transitive relationship to generate. \
 Only need log2(max-chain) to prevent cycles.")
 ctx = bx.Context()
 aux = bx.Context()
@@ -23,6 +22,7 @@ def reset_stats():
     stats["size"] = 0
     stats["degree"] = 0
     stats["statements"] = 0
+    stats["time"] = 0
 
 
 def name(var):
@@ -345,9 +345,10 @@ def consistent(*statements, exhaustive=False):
     statements = [logic.compile(s) for s in statements]
 
     clauses = statements
+    start = time.clock()
     if options.exhaustive or exhaustive:
         clauses += exhaustive_consistency(statements)
-        return solve(clauses, options, depth="exhaustive")
+        result = solve(clauses, options, depth="exhaustive")
     else:
         depth = int(options.depth)
         for d in range(depth):
@@ -357,4 +358,7 @@ def consistent(*statements, exhaustive=False):
             depth += 1
             clauses += consistency(clauses)
             result = solve(clauses, options, depth)
-        return result
+    stop = time.clock()
+    stats["time"] += stop - start
+
+    return result
