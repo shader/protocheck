@@ -447,9 +447,10 @@ def handle_enactability(protocol, args):
 
     return e
 
+
 def handle_liveness(protocol, args):
     reset_stats()
-    e =  protocol.is_enactable()
+    e = protocol.is_enactable()
     violation = consistent(protocol.dead_end)
     print("  Live: ", e and not violation)
     if args.verbose or args.stats:
@@ -460,6 +461,7 @@ def handle_liveness(protocol, args):
         print("\n    Violation:")
         pp.pprint(violation)
         print()
+
 
 def handle_safety(protocol, args):
     reset_stats()
@@ -474,6 +476,7 @@ def handle_safety(protocol, args):
         print("\nViolation:")
         pp.pprint(violation)
         print()
+
 
 def handle_atomicity(protocol,args):
     reset_stats()
@@ -491,12 +494,12 @@ def handle_atomicity(protocol,args):
         print()
 
 
-def handle_all(protocol, args):
-    enactable = handle_enactability(protocol, args)
+def handle_all(protocol, args, **kwargs):
+    enactable = handle_enactability(protocol, args, **kwargs)
     if enactable:
-        handle_liveness(protocol, args)
-        handle_safety(protocol, args)
-        handle_atomicity(protocol, args)
+        handle_liveness(protocol, args, **kwargs)
+        handle_safety(protocol, args, **kwargs)
+        handle_atomicity(protocol, args, **kwargs)
 
 
 def main():
