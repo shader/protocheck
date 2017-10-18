@@ -442,7 +442,7 @@ def handle_enactability(protocol, args):
         print("    stats: ", stats)
     if not e and not args.quiet or args.verbose:
         print_formula(logic.And(protocol.correct, protocol.enactability))
-    elif e and args.verbose:
+    if e and args.verbose:
         pp.pprint(e)
 
     return e
