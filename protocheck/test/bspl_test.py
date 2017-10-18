@@ -5,7 +5,7 @@ from protocheck import precedence, logic
 
 @pytest.fixture(scope="module")
 def Auction():
-    return load_file('protocheck/test/samples/bspl/auction').protocols['Auction']
+    return load_file('samples/bspl/auction').protocols['Auction']
 
 @pytest.fixture(scope="module")
 def A(Auction):
