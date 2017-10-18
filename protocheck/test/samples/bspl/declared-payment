@@ -16,7 +16,7 @@ Credit {
   B $\mapsto$ S: PayCredit[in order, in acceptCredit, out payment]
 }
 
-DeclaredPurchase{
+DeclaredPayment {
   $\msf{roles}$ B, S // Buyer, Seller
   $\msf{parameters}$ out order key, out filled
 
