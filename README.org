@@ -50,6 +50,9 @@ optional arguments:
 
    'input' is the filename of a protocol specification file.
 
+   There are some example protocol files in the 'samples' directory.
+
 ** Notes
    - The default heuristics for protocol verification are not always correct. If you are unsure of the answer, try again with '--exhaustive'.
    - There are probably still some bugs. If you find a case that doesn't work as you expect, please record everything with '-v' and submit an issue.
+   - For easier testing of listings used in latex papers, protocheck will automatically strip latex formatting before parsing a protocol, so they should work without modification.

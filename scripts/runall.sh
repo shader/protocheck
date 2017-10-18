@@ -1,6 +1,6 @@
 #!/bin/bash
 action=${1:-all}
-dir=protocheck/test/samples/bspl
+dir=samples
 for file in ${dir}/*
 do
     echo $file >&2
