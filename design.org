@@ -1,0 +1,33 @@
+** Preventing Prescience in Message Receptions
+   Some causality conflicts occur when a binding could be produced by multiple messages at the same role.
+   One potential solution for these conflicts is to trace the origin of the binding, instead of treating them as identical values.
+
+   Suppose two messages A->B a[out v] and B->A b[out v] are sent between roles A and B in opposite directions.
+   Then following the path of message 'a', A:v -> a -> B:v, so A:v>B:v. But following 'b' the opposite is true: B:v>A:v.
+   Because A:v>B:v and B:v>A:v cannot both be true, the circumstance in which both messages are sent is invalid, even without considering safety.
+
+   However, if we consider the provenance of v, then the situation becomes different. We now have:
+   a: A:v -> a -> B:a/v
+   b: B:v -> b -> A:b/v
+   So A:v>B:a/v and B:v>A:b/v can both be true.
+
+   Basically, 'knowledge' of a value is indirectly related to its source. Before, receiving a message required that the knowledge of such information be simultaneous; it could not already be known.
+   Now only knowledge of that /instance/ is simultaneous; prior knowledge from other sources may already exist.
+   This may be a problem if knowledge of a binding somehow exists prior to *all* message transmissions.
+   For example, some message m[in v, out w] that would normally be constrained until after some message producing 'v' is received. However, if role M simply knows 'v' ex nihilo, it would be able to send that message.
+   
+   Ultimately, this approach to tracking provenance seems to be equivalent to relaxing the reception constraint for 'out' parameters: data is known either prior or simultaneous to the reception of a message containing it as either in or out.
+   Much simpler to implement that way.
+
+** Optimization
+*** Preventing precedence relationships from exploding combinatorically
+    The precedence implementation constrains the temporal consistency of a set of events by expanding clauses for every possible combination of relationships among a set of events.
+    This means the number of clauses is at least n^2.
+
+    An effective optimization might be to only constrain relationships that appear in the input formulas.
+
+    In other words, if A<B and A*B both appear, then the clause onehot(A<B,A*B) is generated, instead of onehot(A<B,B<A,A*B) which is much larger. And if only A<B appears, then no constraints are necessary.
+    
+    Transitive relationships are another point of issue. If A<B and B<C appear in the set of events, then the transitive relationship A<C should be generated. However, that relationship is currently being implemented as the logical relation "A<B & B<C => A<C", along with all other possible transitive relationships.
+
+    The ultimate assumption of this optimization is that if a relationship is not used at a higher level, it is unimportant and does not need to be constrained.
