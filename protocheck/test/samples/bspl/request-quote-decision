@@ -2,7 +2,7 @@ RequestQuoteDecision {
   $\msf{roles}$ B, S
   $\msf{parameters}$ out ID key, out item, out price, out decision
 
-   Request Quote(B, S, out ID, out item, out price)
-   B $\mapsto$ S: accept [in ID, in item, in price, out decision]
-   B $\mapsto$ S: reject [in ID, in item, in price, out decision] 
+  RequestQuote(B, S, out ID, out item, out price)
+  B $\mapsto$ S: accept [in ID, in item, in price, out decision]
+  B $\mapsto$ S: reject [in ID, in item, in price, out decision]
 }
