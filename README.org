@@ -13,10 +13,16 @@ Protocheck is an application designed to verify various correctness properties o
        #+begin_example
        $ mkvirtualenv protocheck
        #+end_example
-    3. Install package globally
+    3. Install package in development mode
        #+begin_example
-       $ sudo pip install ./protocheck
+       $ sudo pip install -e ./protocheck
        #+end_example
+    4. Generate parser from grammar
+       #+begin_example
+       # From protocheck subdirectory of repo:
+       $ grako bspl.gr >bspl_parser.py
+       #+end_example
+
     
 ** Usage
    When installed globally, protocheck provides the 'bspl' entrypoint, that can be used as follows:
