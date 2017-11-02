@@ -13,6 +13,7 @@ if version < '2.2.3':
 
 from protocheck import __version__ as version
 
+
 def requireModules(moduleNames=None):
     import re
     if moduleNames is None:
@@ -22,8 +23,8 @@ def requireModules(moduleNames=None):
 
     commentPattern = re.compile(r'^\w*?#')
     moduleNames.extend(
-        filter(lambda line: not commentPattern.match(line), 
-            open('requirements.txt').readlines()))
+        filter(lambda line: not commentPattern.match(line),
+               open('requirements.txt').readlines()))
 
     return moduleNames
 
@@ -49,6 +50,8 @@ setup(
     entry_points=entry_points,
 
     install_requires=requireModules(),
+
+    packages=['protocheck'],
 
     test_suite='protocheck'
 )
