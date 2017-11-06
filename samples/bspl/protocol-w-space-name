@@ -1,0 +1,14 @@
+Referenced protocol {
+  roles C, D
+  parameters in ID key, in data
+
+  C -> D message[in ID, in data, out msg]
+}
+
+This name has spaces {
+  roles A, B, C
+  parameters out ID key, out data
+
+  A -> B start[out ID, out data]
+  Referenced protocol(C, A, ID, data)
+}
