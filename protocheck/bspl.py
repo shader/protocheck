@@ -82,6 +82,8 @@ class Protocol(Base):
 
         self.parameters = {p['name']: Parameter(p, self)
                            for p in schema['parameters']}
+        self.private_parameters = {p['name']: Parameter(p, self)
+                                   for p in schema.get('private') or []}
         self.keys = {p for p in self.parameters.values()
                      if p.key
                      or parent.type == 'protocol'
@@ -297,6 +299,12 @@ class Message(Protocol):
         self.recipient = parent.roles.get(schema['recipient'])
         if not self.recipient:
             raise LookupError("Role not found", schema['recipient'])
+
+        for p in self.parameters:
+            if parent.private_parameters \
+               and p not in parent.parameters \
+               and p not in parent.private_parameters:
+                raise LookupError("Undeclared parameter", p)
 
     @property
     def name(self):
