@@ -56,7 +56,7 @@ class Base():
 
     @property
     def name(self):
-        return self.schema['name']
+        return self.schema['name'].strip()
 
     @property
     def type(self):

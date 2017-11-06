@@ -2,7 +2,7 @@
 
 document = {protocol ~ }+ $;
 
-protocol = type:`protocol` name:word '{' ~ 'roles' roles:roles 'parameters' parameters:params references:references '}';
+protocol = type:`protocol` name:spacename '{' ~ 'roles' roles:roles 'parameters' parameters:params references:references '}';
 
 roles = ','.{role} ;
 role = name:word ;
@@ -13,8 +13,9 @@ adornment = 'out' | 'in' | 'nil' | 'any' | 'opt' ;
 
 references = { message | ref } ;
 
-ref = type:`protocol` name:word '(' ~ [roles:roles '|'] params:params ')' ;
+ref = type:`protocol` name:spacename '(' ~ [roles:roles '|'] params:params ')' ;
 
 message = type:`message` sender:word ('->'|'→'|'↦') ~ recipient:word [':'] name:word '[' parameters:params ']';
 
 word = /[\w-]+/ ;
+spacename = /[ \w-]+/ ;
