@@ -62,6 +62,29 @@ optional arguments:
 
    There are some example protocol files in the 'samples' directory.
 
+
+** Common Problems
+
+*** UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 5566: character maps to <undefined>
+    Protocheck has support for unicode arrow symbols in the protocol specifications. If your terminal does not support unicode characters, you may need to do one of the following workarounds:
+
+**** Windows
+     Try one of the following:
+     1. Try Python 3.6+, which supposedly resolves the issue
+     2. Run ~set PYTHONIOENCODING=utf-8~ in your shell
+     3. Try the following:
+#+begin_example
+T:\> py -mpip install win-unicode-console
+T:\> py -mrun bspl.py
+#+end_example
+
+**** Other
+     I haven't run into this particular error on linux, except in older versions of python.
+     If you still run into it, try
+#+begin_example
+# export PYTHONIOENCODING="utf-8"
+#+end_example
+
 ** Notes
    - The default heuristics for protocol verification are not always correct. If you are unsure of the answer, try again with '--exhaustive'.
    - There are probably still some bugs. If you find a case that doesn't work as you expect, please record everything with '-v' and submit an issue.
