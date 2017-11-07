@@ -2,7 +2,7 @@
 
 document = {protocol ~ }+ $;
 
-protocol = type:`protocol` name:spacename '{' ~ 'roles' roles:roles 'parameters' parameters:params references:references '}';
+protocol = type:`protocol` name:spacename '{' ~ 'roles' roles:roles 'parameters' parameters:params (('private' private:params) | ()) references:references '}';
 
 roles = ','.{role} ;
 role = name:word ;

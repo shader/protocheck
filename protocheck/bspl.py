@@ -73,17 +73,26 @@ def reference(schema, parent):
     else:
         raise Exception("Unknown type: " + schema["type"])
 
+
 class Protocol(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
 
         self.enactable = None
 
-        self.parameters = {p['name']: Parameter(p, self) for p in schema['parameters']}
-        self.keys = {p for p in self.parameters.values() \
-                     if p.key or parent.type=='protocol' and p.name in parent.parameters and parent.parameters[p.name].key}
-        self.roles = {r['name']: Role(r, self) for r in schema.get('roles', [])}
-        self.references = [reference(r, self) for r in schema.get('references', [])]
+        self.parameters = {p['name']: Parameter(p, self)
+                           for p in schema['parameters']}
+        self.private_parameters = {p['name']: Parameter(p, self)
+                                   for p in schema.get('private') or []}
+        self.keys = {p for p in self.parameters.values()
+                     if p.key
+                     or parent.type == 'protocol'
+                     and p.name in parent.parameters
+                     and parent.parameters[p.name].key}
+        self.roles = {r['name']: Role(r, self)
+                      for r in schema.get('roles', [])}
+        self.references = [reference(r, self)
+                           for r in schema.get('references', [])]
 
     def resolve_references(self, spec):
         refs = []
@@ -290,6 +299,11 @@ class Message(Protocol):
         self.recipient = parent.roles.get(schema['recipient'])
         if not self.recipient:
             raise LookupError("Role not found", schema['recipient'])
+
+        for p in self.parameters:
+            if p not in parent.parameters \
+               and p not in parent.private_parameters:
+                raise LookupError("Undeclared parameter", p)
 
     @property
     def name(self):
