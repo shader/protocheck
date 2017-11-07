@@ -301,8 +301,7 @@ class Message(Protocol):
             raise LookupError("Role not found", schema['recipient'])
 
         for p in self.parameters:
-            if parent.private_parameters \
-               and p not in parent.parameters \
+            if p not in parent.parameters \
                and p not in parent.private_parameters:
                 raise LookupError("Undeclared parameter", p)
 
