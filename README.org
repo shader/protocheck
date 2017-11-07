@@ -4,7 +4,11 @@ Protocheck is an application designed to verify various correctness properties o
 ** Installation
    Protocheck may eventually be made available through the PyPI package registry, but for now install it directly from github.
 
-*** github
+*** Prerequisites
+    Protocheck requires python version 3.4 or later, because of one of its dependencies.
+    On Windows, Python 3.6+ is recommended.
+
+*** Install from source (Github)
     1. Download the source code from github:
        #+begin_example
        $ git clone https://github.com/shader/protocheck.git
