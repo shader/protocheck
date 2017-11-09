@@ -516,12 +516,17 @@ def handle_all(protocol, args, **kwargs):
         handle_atomicity(protocol, args, **kwargs)
 
 
+def check_syntax(*args):
+    print("Syntax: correct")
+
+
 def main():
     actions = {
         'enactability': handle_enactability,
         'liveness': handle_liveness,
         'safety': handle_safety,
         'atomicity': handle_atomicity,
+        'syntax': check_syntax,
         'all': handle_all
     }
 
