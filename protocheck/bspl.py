@@ -121,7 +121,14 @@ class Protocol(Base):
 
     @property
     def all_parameters(self):
-        return flatten([m.parameters.values() for m in self.messages.values()])
+        params = flatten([m.parameters.values() for m in self.messages.values()])
+
+        # don't duplicate parameters
+        compact = {}
+        for p in params:
+            compact[p.name] = p
+
+        return compact.values()
 
     def _adorned(self, adornment):
         "helper method for selecting parameters with a particular adornment"
