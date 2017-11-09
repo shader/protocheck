@@ -221,13 +221,18 @@ class Protocol(Base):
                 alts = []
                 for r in self.roles.values():
                     #we assume that an agent can choose between alternative messages
-                    alts.append(or_(*[m.sent for m in sources if m.sender == r]))
-                #at most one message producing this parameter can be observed at once
-                #negate to prove it is impossible to break
-                clauses.append(logic.Name(~onehot0(*alts), p.name + "-unsafe"))
+                    msgs = [m.sent for m in sources if m.sender == r]
+                    if msgs:
+                        alts.append(or_(*msgs))
+                # at most one message producing this parameter can be observed at once
+                more_than_one = or_(*pairwise(and_, alts))
+
+                # only consider cases where more than one at once is possible
+                if more_than_one:
+                    clauses.append(logic.Name(more_than_one, p.name + "-unsafe"))
         if clauses:
             #at least one conflict
-            return logic.And(self.correct, *clauses)
+            return logic.And(self.correct, logic.Name(clauses, "unsafe"))
         else:
             #no conflicting pairs; automatically safe -> not unsafe
             return bx.ZERO
