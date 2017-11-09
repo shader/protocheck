@@ -1,6 +1,7 @@
 Debit {
   $\msf{roles}$ B, S
   $\msf{parameters}$ in order key, out offer, out payment, nil filled
+  private debitOffer, acceptDebit
 
   B $\mapsto$ S: OfferDebit[in order, out offer, out debitOffer, nil filled]
   S $\mapsto$ B: AcceptDebit[in order, in debitOffer, out acceptDebit]
@@ -10,6 +11,7 @@ Debit {
 Credit {
   $\msf{roles}$ B, S
   $\msf{parameters}$ in order key, out offer, out payment, nil filled
+  private creditOffer, acceptCredit
 
   B $\mapsto$ S: OfferCredit[in order, out offer, out creditOffer, nil filled]
   S $\mapsto$ B: AcceptCredit[in order, in creditOffer, out acceptCredit]
@@ -19,6 +21,7 @@ Credit {
 DeclaredPayment {
   $\msf{roles}$ B, S // Buyer, Seller
   $\msf{parameters}$ out order key, out filled
+  private offer, payment
 
   B $\mapsto$ S: PlaceOrder[out order]
   Debit(B, S, order, offer, payment, filled)

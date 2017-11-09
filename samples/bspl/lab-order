@@ -1,6 +1,7 @@
 CreateOrder {
   roles S, P, PS, C, CS, L, LS
   parameters out complaint key, out results
+  private order, specimen, unsuitable, received, result-id, request
 
   S -> P: Complain[out complaint]
   P -> PS: EnterRequest[in complaint, out order]
@@ -30,6 +31,7 @@ ProviderCollection {
 LabCollection {
   roles S, P, L
   parameters in order key, out specimen
+  private instructions
 
   P -> S: Instructions[in order, out instructions]
   S -> L: Visit[in order, in instructions, out specimen]
@@ -38,6 +40,7 @@ LabCollection {
 ThirdPartyCollection {
   roles S, P, C, L
   parameters in order key, out specimen
+  private instructions, appointment
 
   P -> S: Instructions[in order, out instructions]
   S -> C: SetupAppointment[in order, in instructions, out appointment]

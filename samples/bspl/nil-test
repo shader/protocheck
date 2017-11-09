@@ -1,6 +1,7 @@
 NilTest {
   roles A, B
   parameters out id key, out done
+  private cancel
 
   A -> B: Start[out id]
   A -> B: Cancel[in id, out cancel]

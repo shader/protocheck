@@ -10,6 +10,7 @@ AccessData {
 ShareHealthRecords {
   $\msf{roles}$ P, R, C // patient, researcher, clinic
   $\msf{parameters}$ out ID key, out record, out revoked
+  private req, result
 
   P $\mapsto$ C: Authorize[out ID, out record]
   AccessData(R, C, in ID, in record, out req, out result, nil revoked)

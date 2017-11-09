@@ -1,6 +1,7 @@
 Referenced protocol {
   roles C, D
   parameters in ID key, in data
+  private msg
 
   C -> D message[in ID, in data, out msg]
 }

@@ -1,6 +1,7 @@
 NilTest3 {
   roles A, B
   parameters out a, out done
+  private b
 
   A -> B: One[out a, out b]
   B -> A: Two[in a, nil b, out done]
