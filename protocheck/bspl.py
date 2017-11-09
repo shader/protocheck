@@ -8,7 +8,7 @@ import configargparse
 import re
 import pprint
 import json
-import textwrap
+import sys
 pp = pprint.PrettyPrinter()
 
 def flatten(nested):
@@ -34,17 +34,23 @@ class Specification():
         for p in self.protocols.values():
             p.resolve_references(self)
 
-def load(definition):
+def load(definition, path):
     parser = BsplParser(parseinfo=False)
-    protocols = parser.parse(definition, rule_name='document')
-    return Specification(protocols)
+    try:
+        protocols = parser.parse(definition, rule_name='document')
+        return Specification(protocols)
+    except: # catch *all* exceptions
+        e = sys.exc_info()[1]
+        print("Error in: ", path, file=sys.stderr)
+        print(e, file=sys.stderr)
+        sys.exit(0)
 
 def load_file(path):
     with open(path, 'r', encoding='utf8') as file:
         raw = file.read()
         raw = strip_latex(raw)
 
-        spec = load(raw)
+        spec = load(raw, path)
         return spec
 
 class Base():
@@ -548,8 +554,9 @@ def main():
         spec = load_file(path)
         for protocol in spec.protocols.values():
             if re.match(args.filter, protocol.name):
-                print("\n%s (%s): " % (protocol.name, path))
+                print("%s (%s): " % (protocol.name, path))
                 actions[args.action](protocol, args)
+                print()
 
 
     if not spec.protocols:
