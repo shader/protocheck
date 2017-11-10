@@ -43,7 +43,7 @@ def load(definition, path):
         e = sys.exc_info()[1]
         print("Error in: ", path, file=sys.stderr)
         print(e, file=sys.stderr)
-        sys.exit(0)
+        sys.exit(1)
 
 def load_file(path):
     with open(path, 'r', encoding='utf8') as file:
