@@ -560,15 +560,14 @@ def main():
     parser.add('-f', '--filter', default='.*',
                help='Only process protocols matching regexp')
     parser.add('--version', action="store_true", help='Print version number')
-    args = parser.parse()
+    parser.add('action', help='Primary action to perform',
+               choices=actions.keys())
+    parser.add('input', nargs='+', help='Protocol description file(s)')
 
-    if args.version:
+    if '--version' in sys.argv:
         print(__version__)
         sys.exit(0)
     else:
-        parser.add('action', help='Primary action to perform',
-                   choices=actions.keys())
-        parser.add('input', nargs='+', help='Protocol description file(s)')
         args = parser.parse()
 
     for path in args.input:
