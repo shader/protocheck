@@ -1,3 +1,4 @@
+from protocheck import __version__
 from protocheck import logic
 from boolexpr import onehot0
 from protocheck.precedence import *
@@ -558,9 +559,17 @@ def main():
                help='Prevent printing of violation and formula output')
     parser.add('-f', '--filter', default='.*',
                help='Only process protocols matching regexp')
-    parser.add('action', help='Primary action to perform', choices=actions.keys())
-    parser.add('input', nargs='+', help='Protocol description file(s)')
+    parser.add('--version', action="store_true", help='Print version number')
     args = parser.parse()
+
+    if args.version:
+        print(__version__)
+        sys.exit(0)
+    else:
+        parser.add('action', help='Primary action to perform',
+                   choices=actions.keys())
+        parser.add('input', nargs='+', help='Protocol description file(s)')
+        args = parser.parse()
 
     for path in args.input:
         spec = load_file(path)
@@ -569,7 +578,6 @@ def main():
                 print("%s (%s): " % (protocol.name, path))
                 actions[args.action](protocol, args)
                 print()
-
 
     if not spec.protocols:
         print("No protocols parsed from file: ", args.input)
