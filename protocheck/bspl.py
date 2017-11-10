@@ -356,9 +356,10 @@ class Message(Protocol):
     @property
     def blocked(self):
         s = partial(observe, self.sender)
+        ins = [~s(p) for p in self.ins]
         nils = [and_(s(p), ~(sequential(s(p), self.sent) | simultaneous(s(p), self.sent))) for p in self.nils]
         outs = [s(p) for p in self.outs]
-        return or_(*(nils + outs))
+        return or_(*(nils + outs + ins))
 
     @property
     @logic.named
