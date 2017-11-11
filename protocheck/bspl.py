@@ -11,6 +11,7 @@ import pprint
 import json
 import sys
 pp = pprint.PrettyPrinter()
+debug = False
 
 def flatten(nested):
     return list(itertools.chain.from_iterable(nested))
@@ -40,11 +41,14 @@ def load(definition, path):
     try:
         protocols = parser.parse(definition, rule_name='document')
         return Specification(protocols)
-    except: # catch *all* exceptions
-        e = sys.exc_info()[1]
-        print("Error in: ", path, file=sys.stderr)
-        print(e, file=sys.stderr)
-        sys.exit(1)
+    except:  # catch *all* exceptions
+        if not debug:  # suppress traceback by default
+            e = sys.exc_info()[1]
+            print("Error in: ", path, file=sys.stderr)
+            print(e, file=sys.stderr)
+            sys.exit(1)
+        else:
+            raise
 
 def load_file(path):
     with open(path, 'r', encoding='utf8') as file:
@@ -561,6 +565,7 @@ def main():
     parser.add('-f', '--filter', default='.*',
                help='Only process protocols matching regexp')
     parser.add('--version', action="store_true", help='Print version number')
+    parser.add('--debug', action="store_true", help='Debug mode')
     parser.add('action', help='Primary action to perform',
                choices=actions.keys())
     parser.add('input', nargs='+', help='Protocol description file(s)')
@@ -570,6 +575,8 @@ def main():
         sys.exit(0)
     else:
         args = parser.parse()
+        global debug
+        debug = args.debug
 
     for path in args.input:
         spec = load_file(path)
