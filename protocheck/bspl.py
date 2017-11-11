@@ -316,6 +316,8 @@ class Protocol(Base):
 class Message(Protocol):
     def __init__(self, schema, parent):
         super().__init__(schema, parent)
+        self.idx = 1
+
         self.sender = parent.roles.get(schema['sender'])
         if not self.sender:
             raise LookupError("Role not found", schema['sender'])
@@ -330,10 +332,20 @@ class Message(Protocol):
 
     @property
     def name(self):
-        return self.parent.name + "/" + self.schema['name']
+        return self.parent.name + "/" + self.schema['name'] \
+            + (str(self.idx) if self.idx > 1 else "")
 
     def instance(self, parent):
-        return Message(self.schema, parent)
+        msg = Message(self.schema, parent)
+
+        # handle duplicates
+        for m in self.parent.references:
+            if m == self:
+                break
+            if m.schema['name'] == self.schema['name']:
+                msg.idx += 1
+
+        return msg
 
     @property
     def messages(self):
