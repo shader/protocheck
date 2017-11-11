@@ -1,6 +1,5 @@
 from protocheck import __version__
 from protocheck import logic
-from boolexpr import onehot0
 from protocheck.precedence import *
 from protocheck.bspl_parser import BsplParser
 from functools import partial
@@ -200,7 +199,9 @@ class Protocol(Base):
         return recur([(self,q) for q in self.references], set())
 
     def p_cover(self, parameter):
-        if type(parameter) is not str: parameter = parameter.name
+        if type(parameter) is not str:
+            parameter = parameter.name
+
         alts = []
         for m in self.messages.values():
             if parameter in m.parameters:
@@ -426,8 +427,10 @@ class Role(Base):
 
     @logic.named
     def minimality(self, protocol):
-        "Every parameter observed by a role must have a corresponding message transmission or reception"
+        """Every parameter observed by a role must have a corresponding
+        message transmission or reception"""
         sources = {}
+
         def add(m, p):
             p = p.name
             if p in sources:
@@ -435,16 +438,28 @@ class Role(Base):
             else:
                 sources[p] = [m]
 
+        outgoing = set()
         for m in self.messages(protocol).values():
             if m.recipient == self:
-                for p in m.ins:
+                for p in m.ins.union(m.outs):
                     add(m, p)
-            for p in m.outs:
-                add(m, p)
+            else:
+                for p in m.outs:
+                    add(m, p)
+                for p in m.ins:
+                    outgoing.add(p.name)
 
-        return and_(*[impl(self.observe(p),
-                           or_(*[simultaneous(self.observe(m), self.observe(p)) for m in sources[p]]))
-                     for p in sources])
+        # keep track of 'in' parameters being sent without sources
+        # unsourced parameters cannot be observed
+        unsourced = [~self.observe(m) for m in outgoing - set(sources.keys())]
+
+        # sourced parameters must be received or sent to be observed
+        sourced = [impl(self.observe(p),
+                        or_(*[simultaneous(self.observe(m), self.observe(p))
+                              for m in sources[p]]))
+                   for p in sources]
+
+        return and_(*(unsourced + sourced))
 
     @logic.named
     def nonsimultaneity(self, protocol):
