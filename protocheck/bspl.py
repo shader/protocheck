@@ -196,7 +196,8 @@ class Protocol(Base):
                 else:
                     return recur(queue, pairs)
 
-        return recur([(self,q) for q in self.references], set())
+        return recur([(self, q) for q in self.references
+                      if type(q) is not Message or q.is_entrypoint], set())
 
     def p_cover(self, parameter):
         if type(parameter) is not str:
