@@ -64,9 +64,16 @@ def compile(statements):
         # atomic statement
         return statements
 
-def named(fn):
-    """Wrapper for functions that return logic statements, to track where they came from"""
-    def wrapped(*args, **kwds):
-        name = "-".join([a.name for a in args] + [fn.__name__])
-        return Name(fn(*args, **kwds), name)
-    return wrapped
+def named(arg):
+    def wrap(fn, name=arg):
+        """Wrapper for functions that return logic statements, to track where
+they came from"""
+        def wrapped(*args, **kwds):
+            n = name or "-".join([a.name for a in args] + [fn.__name__])
+            return Name(fn(*args, **kwds), n)
+        return wrapped
+
+    if type(arg) is str:
+        return wrap
+    else:
+        return wrap(arg, None)
