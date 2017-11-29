@@ -269,12 +269,17 @@ class Protocol(Base):
     @property
     @logic.named
     def correct(self):
-        clauses = []
-        for m in self.messages.values():
-            clauses.append(logic.And(m.emission, m.reception, m.transmission, m.non_lossy))
-        for r in self.roles.values():
-            clauses.append(logic.And(r.nonsimultaneity(self), r.minimality(self)))
-        return logic.And(*clauses)
+        clauses = {}
+        msgs = self.messages.values()
+        roles = self.roles.values()
+        clauses["Emission"] = {m.shortname: m.emission for m in msgs}
+        clauses["Reception"] = {m.shortname: m.reception for m in msgs}
+        clauses["Transmission"] = {m.shortname: m.transmission for m in msgs}
+        clauses["Non-lossy"] = {m.shortname: m.non_lossy for m in msgs}
+        clauses["Non-simultaneity"] = {r.name: r.nonsimultaneity(self)
+                                       for r in roles}
+        clauses["Minimality"] = {r.name: r.minimality(self) for r in roles}
+        return clauses
 
     @property
     @logic.named
@@ -334,8 +339,11 @@ class Message(Protocol):
 
     @property
     def name(self):
-        return self.parent.name + "/" + self.schema['name'] \
-            + (str(self.idx) if self.idx > 1 else "")
+        return self.parent.name + "/" + self.shortname
+
+    @property
+    def shortname(self):
+        return self.schema['name'] + (str(self.idx) if self.idx > 1 else "")
 
     def instance(self, parent):
         msg = Message(self.schema, parent)
@@ -380,19 +388,16 @@ class Message(Protocol):
         return or_(*(nils + outs + ins))
 
     @property
-    @logic.named
     def transmission(self):
         "Each message reception is causally preceded by its emission"
         return impl(self.received, sequential(self.sent, self.received))
 
     @property
-    @logic.named
     def non_lossy(self):
         "Each message emission results in reception"
         return impl(self.sent, self.received)
 
     @property
-    @logic.named
     def emission(self):
         """Sending a message must be preceded by observation of its ins,
            but cannot be preceded by observation of any nils or outs"""
@@ -406,7 +411,6 @@ class Message(Protocol):
         return and_(*(ins + nils + outs))
 
     @property
-    @logic.named
     def reception(self):
         "Each message reception is accompanied by the observation of its parameters; either they are observed, or the message itself is not"
         clauses = [impl(self.received,
@@ -426,7 +430,6 @@ class Role(Base):
     def sent_messages(self, protocol):
         return [m for m in protocol.messages.values() if m.sender == self]
 
-    @logic.named
     def minimality(self, protocol):
         """Every parameter observed by a role must have a corresponding
         message transmission or reception"""
@@ -452,17 +455,18 @@ class Role(Base):
 
         # keep track of 'in' parameters being sent without sources
         # unsourced parameters cannot be observed
-        unsourced = [~self.observe(m) for m in outgoing - set(sources.keys())]
+        unsourced = [logic.Name(~self.observe(p), p)
+                     for p in outgoing - set(sources.keys())]
 
         # sourced parameters must be received or sent to be observed
-        sourced = [impl(self.observe(p),
-                        or_(*[simultaneous(self.observe(m), self.observe(p))
-                              for m in sources[p]]))
+        sourced = [logic.Name(impl(self.observe(p),
+                                   or_(*[simultaneous(self.observe(m), self.observe(p))
+                                         for m in sources[p]])),
+                              p)
                    for p in sources]
 
-        return and_(*(unsourced + sourced))
+        return logic.And(*(unsourced + sourced))
 
-    @logic.named
     def nonsimultaneity(self, protocol):
         msgs = [m.sent for m in protocol.messages.values() if m.sender == self]
         if len(msgs) > 1:
