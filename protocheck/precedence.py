@@ -345,19 +345,20 @@ def consistent(*statements, exhaustive=False):
     statements = [logic.compile(s) for s in statements]
 
     clauses = statements
+    cons = []
     start = time.clock()
     if options.exhaustive or exhaustive:
-        clauses += exhaustive_consistency(statements)
-        result = solve(clauses, options, depth="exhaustive")
+        cons += exhaustive_consistency(statements)
+        result = solve(clauses+cons, options, depth="exhaustive")
     else:
         depth = int(options.depth)
         for d in range(depth):
-            clauses += consistency(clauses)
-        result = solve(clauses, options, depth)
+            cons = consistency(clauses+cons)
+        result = solve(clauses+cons, options, depth)
         while result and cycle(result):
             depth += 1
-            clauses += consistency(clauses)
-            result = solve(clauses, options, depth)
+            cons = consistency(clauses+cons)
+            result = solve(clauses+cons, options, depth)
     stop = time.clock()
     stats["time"] += stop - start
 
