@@ -84,6 +84,17 @@ def reference(schema, parent):
         raise Exception("Unknown type: " + schema["type"])
 
 
+def atomic(p):
+    c = p.correct
+    m = p.maximal
+
+    def inner(q, r):
+        formula = logic.And(c, m,
+                            r.enactability,
+                            q.incomplete)
+        return formula
+    return inner
+
 class Protocol(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
