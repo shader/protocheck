@@ -171,18 +171,31 @@ class Protocol(Base):
         #prove there are no unsafe enactments
         return not consistent(self.unsafe)
 
-    @property
-    def atomicity(self):
-        return [logic.And(self.correct,
-                          self.maximal,
-                          r.enactability,
-                          q.incomplete) for q,r in self.refp]
-
-    def check_atomicity(self):
-        for formula in self.atomicity:
+    def recursive_property(self, prop, filter=None):
+        for r in self.references:
+            if filter and not filter(r):
+                continue  # skip references that do not pass the filter
+            formula = prop(self, r)
             s = consistent(formula)
-            if s: return s, formula
+            if s:
+                # found solution; short circuit
+                return s, formula
+            else:
+                # recurse
+                s, formula = r.recursive_property(prop, filter)
+                if s:
+                    return s, formula
+
         return None, None
+
+    def check_atomicity(self, args=None):
+        def filter(ref):
+            return type(ref) is not Message or ref.is_entrypoint
+
+        # if args and args.exhaustive:
+        #     return self.recursive_property(atomic(self))
+        # else:
+        return self.recursive_property(atomic(self), filter)
 
     def is_atomic(self):
         solution, _ = self.check_atomicity()
@@ -378,6 +391,9 @@ class Message(Protocol):
     def enactability(self):
         return self.received
 
+    def check_atomicity(self):
+        return None, None
+
     @property
     @logic.named
     def unenactable(self):
@@ -551,9 +567,9 @@ def handle_safety(protocol, args):
         print()
 
 
-def handle_atomicity(protocol,args):
+def handle_atomicity(protocol, args):
     reset_stats()
-    a, formula = protocol.check_atomicity()
+    a, formula = protocol.check_atomicity(args)
     print("  Atomic: ", not a)
     if args.verbose or args.stats:
         print("    stats: ", stats)
