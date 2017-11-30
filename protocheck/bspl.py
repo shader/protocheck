@@ -14,8 +14,10 @@ import grako
 pp = pprint.PrettyPrinter()
 debug = False
 
+
 def flatten(nested):
     return list(itertools.chain.from_iterable(nested))
+
 
 class Specification():
     def __init__(self, protocols):
@@ -29,13 +31,15 @@ class Specification():
             if p not in self.references:
                 self.references[p] = set()
             for r in p.references:
-                if r.type != 'protocol': continue
+                if r.type != 'protocol':
+                    continue
                 if r.name in self.protocols:
                     self.references[p].add(self.protocols[r.name])
                 else:
                     raise Exception("Reference to unknown protocol: " + r.name)
         for p in self.protocols.values():
             p.resolve_references(self)
+
 
 def load(definition, path):
     parser = BsplParser(parseinfo=False)
@@ -51,6 +55,7 @@ def load(definition, path):
         else:
             raise
 
+
 def load_file(path):
     with open(path, 'r', encoding='utf8') as file:
         raw = file.read()
@@ -58,6 +63,7 @@ def load_file(path):
 
         spec = load(raw, path)
         return spec
+
 
 class Base():
     """Class containing elements common to protocols, messages, etc."""
@@ -77,8 +83,10 @@ class Base():
     def type(self):
         return self.schema['type']
 
+
 class Reference(Base):
     pass
+
 
 def reference(schema, parent):
     if schema["type"] == "message":
@@ -99,6 +107,7 @@ def atomic(p):
                             q.incomplete)
         return formula
     return inner
+
 
 class Protocol(Base):
     def __init__(self, schema, parent=None):
@@ -146,7 +155,8 @@ class Protocol(Base):
 
     def _adorned(self, adornment):
         "helper method for selecting parameters with a particular adornment"
-        return {p.name for p in self.public_parameters.values() if p.adornment == adornment}
+        return {p.name for p in self.public_parameters.values()
+                if p.adornment == adornment}
 
     @property
     def ins(self):
@@ -162,18 +172,19 @@ class Protocol(Base):
 
     @property
     def messages(self):
-        return {k:v for r in self.references for k,v in r.messages.items()}
+        return {k: v for r in self.references for k, v in r.messages.items()}
 
     def is_enactable(self):
         if self.enactable is None:
-            self.enactable = consistent(logic.And(self.correct, self.enactability))
+            self.enactable = consistent(
+                logic.And(self.correct, self.enactability))
         return self.enactable
 
     def is_live(self):
         return self.is_enactable() and not consistent(self.dead_end)
-    
+
     def is_safe(self):
-        #prove there are no unsafe enactments
+        # prove there are no unsafe enactments
         return not consistent(self.unsafe)
 
     def recursive_property(self, prop, filter=None, verbose=None):
@@ -211,13 +222,15 @@ class Protocol(Base):
     @property
     def refp(self):
         def recur(queue, pairs):
-            if not queue: return pairs
+            if not queue:
+                return pairs
             else:
-                q,r = queue.pop(0) #get first reference
+                q, r = queue.pop(0)  # get first reference
                 if (q, r) not in pairs:
                     pairs.add((q, r))
-                    return recur(queue + [(r,s) for s in r.references
-                                          if type(s) is not Message or s.is_entrypoint], pairs)
+                    return recur(queue +
+                                 [(r, s) for s in r.references
+                                  if type(s) is not Message or s.is_entrypoint], pairs)
                 else:
                     return recur(queue, pairs)
 
@@ -261,12 +274,13 @@ class Protocol(Base):
 
                 # only consider cases where more than one at once is possible
                 if more_than_one:
-                    clauses.append(logic.Name(more_than_one, p.name + "-unsafe"))
+                    clauses.append(
+                        logic.Name(more_than_one, p.name + "-unsafe"))
         if clauses:
-            #at least one conflict
+            # at least one conflict
             return logic.And(self.correct, logic.Name(clauses, "unsafe"))
         else:
-            #no conflicting pairs; automatically safe -> not unsafe
+            # no conflicting pairs; automatically safe -> not unsafe
             return bx.ZERO
 
     def _enactable(self):
@@ -290,7 +304,7 @@ class Protocol(Base):
     @logic.named
     def dead_end(self):
         return logic.And(self.correct, self.maximal, self.incomplete)
-    
+
     @property
     @logic.named
     def correct(self):
@@ -324,7 +338,7 @@ class Protocol(Base):
         "Each out parameter must be observed by at least one role"
         clauses = []
         for p in self.outs:
-            clauses.append(or_(*[m.received for m in self.p_cover(p) \
+            clauses.append(or_(*[m.received for m in self.p_cover(p)
                                  if m.parameters[p].adornment is 'out']))
         return and_(*clauses)
 
@@ -415,7 +429,8 @@ class Message(Protocol):
     def blocked(self):
         s = partial(observe, self.sender)
         ins = [~s(p) for p in self.ins]
-        nils = [and_(s(p), ~(sequential(s(p), self.sent) | simultaneous(s(p), self.sent))) for p in self.nils]
+        nils = [and_(s(p), ~(sequential(s(p), self.sent) |
+                             simultaneous(s(p), self.sent))) for p in self.nils]
         outs = [s(p) for p in self.outs]
         return or_(*(nils + outs + ins))
 
@@ -451,9 +466,10 @@ class Message(Protocol):
                    for p in map(partial(observe, self.recipient), self.ins | self.outs)]
         return and_(*clauses)
 
+
 class Role(Base):
     def messages(self, protocol):
-        return {m.name:m for m in protocol.messages.values()
+        return {m.name: m for m in protocol.messages.values()
                 if m.sender == self or m.recipient == self}
 
     def observe(self, msg):
@@ -505,6 +521,7 @@ class Role(Base):
         else:
             return bx.ONE
 
+
 class Parameter(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
@@ -514,12 +531,15 @@ class Parameter(Base):
     def adornment(self):
         return self.schema['adornment']
 
+
 @wrap(name)
 def observe(role, event):
     return var(role + ":" + event)
 
+
 send = observe
 recv = observe
+
 
 def strip_latex(spec):
     """Remove all instances of '\mapsto' and '\msf{}' from a latex listing, to make it proper BSPL"""
