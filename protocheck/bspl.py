@@ -10,6 +10,7 @@ import re
 import pprint
 import json
 import sys
+import grako
 pp = pprint.PrettyPrinter()
 debug = False
 
@@ -62,7 +63,10 @@ class Base():
     """Class containing elements common to protocols, messages, etc."""
 
     def __init__(self, schema, parent):
-        self.schema = schema
+        if isinstance(schema, grako.ast.AST):
+            self.schema = schema.asjson()
+        else:
+            self.schema = schema.copy()
         self.parent = parent
 
     @property
