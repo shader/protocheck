@@ -2,6 +2,7 @@ from protocheck import __version__
 from protocheck import logic
 from protocheck.precedence import *
 from protocheck.bspl_parser import BsplParser
+from protocheck.logic import merge
 from functools import partial
 import itertools
 import configargparse
@@ -101,8 +102,8 @@ class Protocol(Base):
 
         self.enactable = None
 
-        self.parameters = {p['name']: Parameter(p, self)
-                           for p in schema['parameters']}
+        self.public_parameters = {p['name']: Parameter(p, self)
+                                  for p in schema['parameters']}
         self.private_parameters = {p['name']: Parameter(p, self)
                                    for p in schema.get('private') or []}
         self.keys = {p for p in self.parameters.values()
@@ -135,15 +136,8 @@ class Protocol(Base):
         return p
 
     @property
-    def all_parameters(self):
-        params = flatten([m.parameters.values() for m in self.messages.values()])
-
-        # don't duplicate parameters
-        compact = {}
-        for p in params:
-            compact[p.name] = p
-
-        return compact.values()
+    def parameters(self):
+        return merge(self.public_parameters, self.private_parameters)
 
     def _adorned(self, adornment):
         "helper method for selecting parameters with a particular adornment"
@@ -225,24 +219,24 @@ class Protocol(Base):
     def cover(self):
         return logic.And(*[logic.Name(or_(*[m.received for m in self.p_cover(p)]),
                                       p.name + "-cover")
-                           for p in self.parameters.values()])
+                           for p in self.public_parameters.values()])
 
     @property
     @logic.named
     def unsafe(self):
         clauses = []
-        for p in self.all_parameters:
-            #only out parameters can have safety conflicts
+        for p in self.public_parameters:
+            # only public out parameters can have safety conflicts
             sources = [m for m in self.p_cover(p.name)
                        if m.parameters[p.name].adornment == 'out']
             if len(sources) > 1:
                 alts = []
                 for r in self.roles.values():
-                    #we assume that an agent can choose between alternative messages
+                    # assume an agent can choose between alternative messages
                     msgs = [m.sent for m in sources if m.sender == r]
                     if msgs:
                         alts.append(or_(*msgs))
-                # at most one message producing this parameter can be observed at once
+                # at most one message producing this parameter can be sent
                 more_than_one = or_(*pairwise(and_, alts))
 
                 # only consider cases where more than one at once is possible
@@ -258,7 +252,7 @@ class Protocol(Base):
     def _enactable(self):
         "Some message must be received containing each parameter"
         clauses = []
-        for p in self.parameters:
+        for p in self.public_parameters:
             clauses.append(or_(*[m.received for m in self.p_cover(p)]))
         return and_(*clauses)
 
@@ -344,8 +338,7 @@ class Message(Protocol):
             raise LookupError("Role not found", schema['recipient'])
 
         for p in self.parameters:
-            if p not in parent.parameters \
-               and p not in parent.private_parameters:
+            if p not in parent.parameters:
                 raise LookupError("Undeclared parameter", p)
 
     @property
