@@ -125,17 +125,18 @@ class Protocol(Base):
         for r in self.references:
             protocol = spec.protocols.get(r.name)
             if protocol:
-                refs.append(protocol.instance(spec,
-                                              [self.roles.get(role['name'])
-                                               for role in r.schema['params']]))
+                refs.append(protocol.instance(spec, self, r.schema))
             else:
                 refs.append(r.instance(self))
         self.references = refs
 
-    def instance(self, spec, roles):
-        p = Protocol(self.schema, self.parent)
-        for i,r in enumerate(self.roles.values()):
-            p.roles[r.name] = roles[i]
+    def instance(self, spec, parent, schema):
+        p = Protocol(self.schema, parent)
+        for i, r in enumerate(self.roles.values()):
+            p.roles[r.name] = parent.roles.get(schema['params'][i]['name'])
+        for i, par in enumerate(self.schema["parameters"]):
+            p.public_parameters[par['name']].schema["name"] = \
+                schema['params'][i + len(self.roles)]['name']
         p.resolve_references(spec)
         return p
 
@@ -375,6 +376,11 @@ class Message(Protocol):
                 break
             if m.schema['name'] == self.schema['name']:
                 msg.idx += 1
+
+        # propagate renaming from parent protocol
+        for i, par in enumerate(self.public_parameters.values()):
+            msg.public_parameters[par.name].schema["name"] = \
+                parent.parameters[par.name].name
 
         return msg
 
