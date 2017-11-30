@@ -176,11 +176,13 @@ class Protocol(Base):
         #prove there are no unsafe enactments
         return not consistent(self.unsafe)
 
-    def recursive_property(self, prop, filter=None):
+    def recursive_property(self, prop, filter=None, verbose=None):
         for r in self.references:
             if filter and not filter(r):
                 continue  # skip references that do not pass the filter
             formula = prop(self, r)
+            if verbose:
+                print_formula(formula)
             s = consistent(formula)
             if s:
                 # found solution; short circuit
@@ -200,7 +202,7 @@ class Protocol(Base):
         # if args and args.exhaustive:
         #     return self.recursive_property(atomic(self))
         # else:
-        return self.recursive_property(atomic(self), filter)
+        return self.recursive_property(atomic(self), filter, verbose=args.verbose)
 
     def is_atomic(self):
         solution, _ = self.check_atomicity()
@@ -583,8 +585,6 @@ def handle_atomicity(protocol, args):
     print("  Atomic: ", not a)
     if args.verbose or args.stats:
         print("    stats: ", stats)
-    if args.verbose:
-        print_formula(*protocol.atomicity)
     if a and not args.quiet:
         print("\nViolation:")
         pp.pprint(a)
