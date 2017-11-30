@@ -2,6 +2,7 @@ from protocheck import __version__
 from protocheck import logic
 from protocheck.precedence import *
 from protocheck.bspl_parser import BsplParser
+from protocheck.logic import merge
 from functools import partial
 import itertools
 import configargparse
@@ -84,14 +85,25 @@ def reference(schema, parent):
         raise Exception("Unknown type: " + schema["type"])
 
 
+def atomic(p):
+    c = p.correct
+    m = p.maximal
+
+    def inner(q, r):
+        formula = logic.And(c, m,
+                            r.enactability,
+                            q.incomplete)
+        return formula
+    return inner
+
 class Protocol(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
 
         self.enactable = None
 
-        self.parameters = {p['name']: Parameter(p, self)
-                           for p in schema['parameters']}
+        self.public_parameters = {p['name']: Parameter(p, self)
+                                  for p in schema['parameters']}
         self.private_parameters = {p['name']: Parameter(p, self)
                                    for p in schema.get('private') or []}
         self.keys = {p for p in self.parameters.values()
@@ -124,19 +136,12 @@ class Protocol(Base):
         return p
 
     @property
-    def all_parameters(self):
-        params = flatten([m.parameters.values() for m in self.messages.values()])
-
-        # don't duplicate parameters
-        compact = {}
-        for p in params:
-            compact[p.name] = p
-
-        return compact.values()
+    def parameters(self):
+        return merge(self.public_parameters, self.private_parameters)
 
     def _adorned(self, adornment):
         "helper method for selecting parameters with a particular adornment"
-        return {p for p in self.parameters.values() if p.adornment == adornment}
+        return {p.name for p in self.public_parameters.values() if p.adornment == adornment}
 
     @property
     def ins(self):
@@ -166,18 +171,31 @@ class Protocol(Base):
         #prove there are no unsafe enactments
         return not consistent(self.unsafe)
 
-    @property
-    def atomicity(self):
-        return [logic.And(self.correct,
-                          self.maximal,
-                          r.enactability,
-                          q.incomplete) for q,r in self.refp]
-
-    def check_atomicity(self):
-        for formula in self.atomicity:
+    def recursive_property(self, prop, filter=None):
+        for r in self.references:
+            if filter and not filter(r):
+                continue  # skip references that do not pass the filter
+            formula = prop(self, r)
             s = consistent(formula)
-            if s: return s, formula
+            if s:
+                # found solution; short circuit
+                return s, formula
+            else:
+                # recurse
+                s, formula = r.recursive_property(prop, filter)
+                if s:
+                    return s, formula
+
         return None, None
+
+    def check_atomicity(self, args=None):
+        def filter(ref):
+            return type(ref) is not Message or ref.is_entrypoint
+
+        # if args and args.exhaustive:
+        #     return self.recursive_property(atomic(self))
+        # else:
+        return self.recursive_property(atomic(self), filter)
 
     def is_atomic(self):
         solution, _ = self.check_atomicity()
@@ -214,24 +232,24 @@ class Protocol(Base):
     def cover(self):
         return logic.And(*[logic.Name(or_(*[m.received for m in self.p_cover(p)]),
                                       p.name + "-cover")
-                           for p in self.parameters.values()])
+                           for p in self.public_parameters.values()])
 
     @property
     @logic.named
     def unsafe(self):
         clauses = []
-        for p in self.all_parameters:
-            #only out parameters can have safety conflicts
+        for p in self.public_parameters:
+            # only public out parameters can have safety conflicts
             sources = [m for m in self.p_cover(p.name)
                        if m.parameters[p.name].adornment == 'out']
             if len(sources) > 1:
                 alts = []
                 for r in self.roles.values():
-                    #we assume that an agent can choose between alternative messages
+                    # assume an agent can choose between alternative messages
                     msgs = [m.sent for m in sources if m.sender == r]
                     if msgs:
                         alts.append(or_(*msgs))
-                # at most one message producing this parameter can be observed at once
+                # at most one message producing this parameter can be sent
                 more_than_one = or_(*pairwise(and_, alts))
 
                 # only consider cases where more than one at once is possible
@@ -247,7 +265,7 @@ class Protocol(Base):
     def _enactable(self):
         "Some message must be received containing each parameter"
         clauses = []
-        for p in self.parameters:
+        for p in self.public_parameters:
             clauses.append(or_(*[m.received for m in self.p_cover(p)]))
         return and_(*clauses)
 
@@ -300,7 +318,7 @@ class Protocol(Base):
         clauses = []
         for p in self.outs:
             clauses.append(or_(*[m.received for m in self.p_cover(p) \
-                                 if m.parameters[p.name].adornment is 'out']))
+                                 if m.parameters[p].adornment is 'out']))
         return and_(*clauses)
 
     @property
@@ -333,8 +351,7 @@ class Message(Protocol):
             raise LookupError("Role not found", schema['recipient'])
 
         for p in self.parameters:
-            if p not in parent.parameters \
-               and p not in parent.private_parameters:
+            if p not in parent.parameters:
                 raise LookupError("Undeclared parameter", p)
 
     @property
@@ -373,6 +390,9 @@ class Message(Protocol):
     @logic.named
     def enactability(self):
         return self.received
+
+    def check_atomicity(self):
+        return None, None
 
     @property
     @logic.named
@@ -436,7 +456,6 @@ class Role(Base):
         sources = {}
 
         def add(m, p):
-            p = p.name
             if p in sources:
                 sources[p].append(m)
             else:
@@ -451,7 +470,7 @@ class Role(Base):
                 for p in m.outs:
                     add(m, p)
                 for p in m.ins:
-                    outgoing.add(p.name)
+                    outgoing.add(p)
 
         # keep track of 'in' parameters being sent without sources
         # unsourced parameters cannot be observed
@@ -548,9 +567,9 @@ def handle_safety(protocol, args):
         print()
 
 
-def handle_atomicity(protocol,args):
+def handle_atomicity(protocol, args):
     reset_stats()
-    a, formula = protocol.check_atomicity()
+    a, formula = protocol.check_atomicity(args)
     print("  Atomic: ", not a)
     if args.verbose or args.stats:
         print("    stats: ", stats)
