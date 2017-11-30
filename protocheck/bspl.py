@@ -366,7 +366,7 @@ class Message(Protocol):
         msg = Message(self.schema, parent)
 
         # handle duplicates
-        for m in self.parent.references:
+        for m in parent.references:
             if m == self:
                 break
             if m.schema['name'] == self.schema['name']:
