@@ -141,7 +141,7 @@ class Protocol(Base):
 
     def _adorned(self, adornment):
         "helper method for selecting parameters with a particular adornment"
-        return {p for p in self.parameters.values() if p.adornment == adornment}
+        return {p.name for p in self.public_parameters.values() if p.adornment == adornment}
 
     @property
     def ins(self):
@@ -305,7 +305,7 @@ class Protocol(Base):
         clauses = []
         for p in self.outs:
             clauses.append(or_(*[m.received for m in self.p_cover(p) \
-                                 if m.parameters[p.name].adornment is 'out']))
+                                 if m.parameters[p].adornment is 'out']))
         return and_(*clauses)
 
     @property
@@ -440,7 +440,6 @@ class Role(Base):
         sources = {}
 
         def add(m, p):
-            p = p.name
             if p in sources:
                 sources[p].append(m)
             else:
@@ -455,7 +454,7 @@ class Role(Base):
                 for p in m.outs:
                     add(m, p)
                 for p in m.ins:
-                    outgoing.add(p.name)
+                    outgoing.add(p)
 
         # keep track of 'in' parameters being sent without sources
         # unsourced parameters cannot be observed
