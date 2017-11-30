@@ -1,6 +1,7 @@
-from protocheck import __version__
-from protocheck import logic
-from protocheck.precedence import *
+from protocheck import __version__, logic
+from protocheck.precedence import consistent, pairwise,     \
+    and_, or_, bx, sequential, simultaneous, impl, ordered, \
+    reset_stats, stats, wrap, var, name
 from protocheck.bspl_parser import BsplParser
 from protocheck.logic import merge
 from functools import partial
