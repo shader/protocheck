@@ -385,7 +385,7 @@ class Message(Protocol):
 
     @property
     def messages(self):
-        return {self.name: self}
+        return {self.shortname: self}
 
     @property
     def sent(self):
