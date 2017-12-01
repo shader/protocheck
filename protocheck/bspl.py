@@ -243,8 +243,8 @@ class Protocol(Base):
         clauses = []
         for p in self.public_parameters:
             # only public out parameters can have safety conflicts
-            sources = [m for m in self.p_cover(p.name)
-                       if m.parameters[p.name].adornment == 'out']
+            sources = [m for m in self.p_cover(p)
+                       if m.parameters[p].adornment == 'out']
             if len(sources) > 1:
                 alts = []
                 for r in self.roles.values():
@@ -258,7 +258,7 @@ class Protocol(Base):
                 # only consider cases where more than one at once is possible
                 if more_than_one:
                     clauses.append(
-                        logic.Name(more_than_one, p.name + "-unsafe"))
+                        logic.Name(more_than_one, p + "-unsafe"))
         if clauses:
             # at least one conflict
             return logic.And(self.correct, logic.Name(clauses, "unsafe"))
