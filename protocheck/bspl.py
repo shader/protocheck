@@ -214,7 +214,7 @@ class Protocol(Base):
         # if args and args.exhaustive:
         #     return self.recursive_property(atomic(self))
         # else:
-        return self.recursive_property(atomic(self), filter, verbose=args.verbose)
+        return self.recursive_property(atomic(self), filter, verbose=args and args.verbose)
 
     def is_atomic(self):
         solution, _ = self.check_atomicity()
