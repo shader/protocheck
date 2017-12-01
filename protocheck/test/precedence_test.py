@@ -112,13 +112,13 @@ def test_transitivity():
 
 
 def to_char(i):
-    return bytes([i+b'a'[0]]).decode()
+    return bytes([i + b'a'[0]]).decode()
 
 
 def chain(n):
     clauses = []
     for i in range(n):
-        clauses.append(sequential(to_char(i), to_char(i+1)))
+        clauses.append(sequential(to_char(i), to_char(i + 1)))
     return clauses
 
 
@@ -147,4 +147,4 @@ def test_exhaustive_consistent():
 def test_cycle():
     assert not cycle(['a<b', 'b<c'])
     assert cycle(['a<b', 'b<a'])
-    assert not cycle(['a<b', 'b<c', 'c<a'])
+    assert cycle(['a<b', 'b<c', 'c<a'])
