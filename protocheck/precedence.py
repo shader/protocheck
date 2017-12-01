@@ -16,7 +16,7 @@ Only need log2(max-chain) to prevent cycles.")
 ctx = bx.Context()
 aux = bx.Context()
 flatten = chain.from_iterable
-stats = {"size": 0, "degree": 0, "statements": 0}
+stats = {"size": 0, "degree": 0, "statements": 0, "time": 0}
 
 
 def reset_stats():
