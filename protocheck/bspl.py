@@ -220,24 +220,6 @@ class Protocol(Base):
         solution, _ = self.check_atomicity()
         return not solution
 
-    @property
-    def refp(self):
-        def recur(queue, pairs):
-            if not queue:
-                return pairs
-            else:
-                q, r = queue.pop(0)  # get first reference
-                if (q, r) not in pairs:
-                    pairs.add((q, r))
-                    return recur(queue +
-                                 [(r, s) for s in r.references
-                                  if type(s) is not Message or s.is_entrypoint], pairs)
-                else:
-                    return recur(queue, pairs)
-
-        return recur([(self, q) for q in self.references
-                      if type(q) is not Message or q.is_entrypoint], set())
-
     def p_cover(self, parameter):
         if type(parameter) is not str:
             parameter = parameter.name
