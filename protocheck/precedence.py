@@ -136,7 +136,8 @@ def occurrence(relationships):
     clauses = []
     for pair, rels in relationships.items():
         for r in rels:
-            clauses.append(impl(relation[r](*pair), var(pair[0]) & var(pair[1])))
+            clauses.append(
+                impl(relation[r](*pair), var(pair[0]) & var(pair[1])))
     return clauses
 
 
@@ -350,16 +351,16 @@ def consistent(*statements, exhaustive=False):
     start = time.clock()
     if options.exhaustive or exhaustive:
         cons += exhaustive_consistency(statements)
-        result = solve(clauses+cons, options, depth="exhaustive")
+        result = solve(clauses + cons, options, depth="exhaustive")
     else:
         depth = int(options.depth)
         for d in range(depth):
-            cons = consistency(clauses+cons)
-        result = solve(clauses+cons, options, depth)
+            cons = consistency(clauses + cons)
+        result = solve(clauses + cons, options, depth)
         while result and cycle(result):
             depth += 1
-            cons = consistency(clauses+cons)
-            result = solve(clauses+cons, options, depth)
+            cons = consistency(clauses + cons)
+            result = solve(clauses + cons, options, depth)
     stop = time.clock()
     stats["time"] += stop - start
 
