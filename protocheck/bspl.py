@@ -528,6 +528,10 @@ def strip_latex(spec):
     """Remove all instances of '\mapsto' and '\msf{}' from a latex listing, to make it proper BSPL"""
     spec = re.sub(r'\$\\msf{(\w+)}\$', r'\1', spec)
     spec = re.sub(r'\$\\mapsto\$', r'->', spec)
+
+    spec = re.sub(r'\$\\role\$', r'roles', spec)
+    spec = re.sub(r'\$\\param\$', r'parameters', spec)
+    spec = re.sub(r'\$\\mo\$', r'->', spec)
     return spec
 
 
