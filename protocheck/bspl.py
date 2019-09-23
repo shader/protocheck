@@ -4,7 +4,6 @@ from protocheck.precedence import consistent, pairwise,     \
     reset_stats, stats, wrap, var, name
 from protocheck.bspl_parser import BsplParser
 from protocheck.logic import merge
-from protocheck.refinement import handle_refinement
 from functools import partial
 import itertools
 import re
