@@ -9,7 +9,7 @@ from protocheck import logic
 
 arg_parser = configargparse.get_argument_parser()
 arg_parser.add("-t", "--tseytin", action="store_true")
-arg_parser.add("-e", "--exhaustive", action="store_true")
+arg_parser.add("-e", "--exhaustive", action="store_false")
 arg_parser.add("-v", "--verbose", action="store_true")
 arg_parser.add("-d", "--depth", default=1, help="Longest transitive relationship to generate. \
 Only need log2(max-chain) to prevent cycles.")
