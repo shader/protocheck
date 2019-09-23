@@ -30,7 +30,7 @@ def requireModules(moduleNames=None):
 
 
 entry_points = {
-    'console_scripts': ['bspl = protocheck.bspl:main'],
+    'console_scripts': ['bspl = protocheck.main:main'],
 }
 
 setup(
