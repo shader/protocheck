@@ -1,0 +1,17 @@
+Flexible-Purchase {
+ $\role$ B, S
+ $\param$ out ID key, out item, out shipped, out paid
+
+ B $\mo$ S: rfq[out ID key, out item]
+ S $\mo$ B: ship[in ID key, out shipped]
+ B $\mo$ S: pay[in ID key, out paid]
+}
+
+Ship-First {
+  $\role$ B, S
+  $\param$ out ID key, out item, out shipped, out paid
+
+  B $\mo$ S: rfq[out ID, out item]
+  S $\mo$ B: ship[in ID, out shipped]
+  B $\mo$ S: transfer[in ID, in shipped, out paid]
+}

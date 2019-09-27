@@ -51,7 +51,6 @@ def main():
         sys.exit(0)
     else:
         args = parser.parse()
-        print(args.exhaustive)
         global debug
         debug = args.debug
 

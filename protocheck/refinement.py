@@ -4,20 +4,16 @@ from protocheck.bspl import load_file
 def handle_refinement(args):
     path = args.input[0]
     spec = load_file(path)
-    Q = P = None
-    for protocol in spec.protocols.values():
-        if protocol.name == args.input[1]:
-            Q = protocol
-        elif protocol.name == args.input[2]:
-            P = protocol
+    Q = spec.protocols[args.input[1]]
+    P = spec.protocols[args.input[2]]
 
-    return check_refinement(Q, P)
-
-
-def check_refinement(Q, P):
-    """Check that protocol Q refines protocol P"""
-
-    return refines(UoD(), P.params, Q, P).result == True
+    result = refines(UoD(), P.public_parameters.keys(), Q, P)
+    if result["ok"] == True:
+        print("  {} Refines {}".format(Q.name, P.name))
+        return True
+    else:
+        print(result)
+        return False
 
 
 def empty_path():
@@ -55,8 +51,8 @@ def known(path, R):
     time = 0
     k = set()
     for instance in path:
-        if (instance.msg.sender == R
-                or instance.msg.recipient == R and instance.delay + time <= len(path)):
+        if (instance.msg.sender.name == R.name
+                or instance.msg.recipient.name == R.name and instance.delay + time <= len(path)):
             k.update(set(instance.msg.ins))
             k.update(set(instance.msg.outs))
         time += 1
@@ -65,7 +61,7 @@ def known(path, R):
 
 def viable(path, msg):
     k = known(path, msg.sender)
-    return k == msg.ins and k.intersection(msg.outs) == set()
+    return k.issuperset(msg.ins) and k.intersection(msg.outs) == set()
 
 
 class UoD():
@@ -84,6 +80,7 @@ class UoD():
 def branches(U, path):
     b = set()
     for msg in U.messages:
+        # print(msg.name, viable(path, msg))
         if viable(path, msg):
             # default messages to unreceived, progressively receive them later
             b.add(Instance(msg, float("inf")))
@@ -106,16 +103,22 @@ def extensions(U, path):
 
 def sources(path, p):
     """The set of all roles that produce p as an out parameter in path"""
-    return set(i.msg.sender for i in path if p in i.msg.outs)
+    return set(i.msg.sender.name for i in path if p in i.msg.outs)
 
 
 def subsumes(U, params, a, b):
     """Path a subsumes path b"""
     for p in params:
-        if sources(a, p) != sources(b, p):
+        sources_a = sources(a, p)
+        sources_b = sources(b, p)
+        if sources_a != sources_b:
+            # print("sources don't match: {} != {}".format(sources_a, sources_b))
             return False
     for r in U.roles:
-        if known(a, r).intersection(params) != known(b, r).intersection(params):
+        known_a = known(a, r).intersection(params)
+        known_b = known(b, r).intersection(params)
+        if known_a != known_b:
+            # print("knowledge doesn't match: {} != {}".format(known_a, known_b))
             return False
     if len(b) > 1:
         b2 = b[:-1]
@@ -158,21 +161,25 @@ def refines(U, params, Q, P):
     paths_P = all_paths(U_P)
 
     for q in paths_Q:
+        # print("q: ", q)
         match = None
         for p in paths_P:
+            # print("p: ", p)
             if subsumes(U_Q, params, q, p):
+                # print("q subsumes p")
                 match = p
-        if not match:
+                break
+        if match == None:
             return {
-                "result": False,
+                "ok": False,
                 "path": q,
-                "reason": "Q has path that does subsume anything in P"
+                "reason": "{} has path that does not subsume any path in {}".format(Q.name, P.name)
             }
         elif branches(U_P, match) and not branches(U_Q, q):
             return {
-                result: False,
-                path: q,
-                match: match,
-                reason: "P has branches but Q does not"
+                "ok": False,
+                "path": q,
+                "match": match,
+                "reason": "P has branches but Q does not"
             }
-    return {"result": True}
+    return {"ok": True}

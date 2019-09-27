@@ -1,0 +1,12 @@
+Either-Starts {
+  $\role$ B, S
+  $\param$ out ID key, out item
+  B $\mapsto$ S: rfq[out ID key, out item]
+  S $\mapsto$ B: recommend[out ID key, out item]
+}
+
+Buyer-Starts {
+  $\role$ B, S
+  $\param$ out ID key, out item
+  B $\mapsto$ S: rfq[out ID key, out item]
+}

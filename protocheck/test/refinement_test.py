@@ -17,14 +17,31 @@ def Q(BasicRefinement):
     return BasicRefinement.protocols['Q']
 
 
+@pytest.fixture(scope="module")
+def ConcurrencyElimination():
+    return load_file('samples/bspl/refinement/concurrency-elimination.bspl')
+
+
+@pytest.fixture(scope="module")
+def Flexible(ConcurrencyElimination):
+    return ConcurrencyElimination.protocols["Flexible-Purchase"]
+
+
+@pytest.fixture(scope="module")
+def ShipFirst(ConcurrencyElimination):
+    return ConcurrencyElimination.protocols["Ship-First"]
+
+
 def test_known_empty(P):
     assert known(empty_path(), P.roles['A']) == set()
 
 
-def test_viable(P):
+def test_viable(P, Flexible):
     test = P.messages['test']
     assert viable(empty_path(), test)
     assert not viable([Instance(test, 0)], test)
+    assert viable([Instance(Flexible.messages["rfq"], 0)],
+                  Flexible.messages["pay"])
 
 
 def test_branches(P):
@@ -48,17 +65,17 @@ def test_extensions(P):
 
 def test_sources(P):
     assert sources(empty_path(), P.parameters['id']) == set()
-    assert sources([Instance(P.messages['test'])], 'id') == {
-        P.roles['A']}
+    assert sources([Instance(P.messages['test'])], 'id') == {'A'}
 
 
-def test_subsumes(P):
+def test_subsumes(P, Q):
     U = UoD.from_protocol(P)
     params = {'id', 'data'}
+    assert subsumes(UoD(), set(), empty_path(), empty_path())
     assert subsumes(U, params, empty_path(), empty_path())
 
-    assert subsumes(U, params, [Instance(P.messages['test'])], [
-                    Instance(P.messages['test'])])
+    assert subsumes(U, params, [Instance(Q.messages['test'], 0)], [
+                    Instance(P.messages['test'], 0)])
 
     assert not subsumes(U, params, empty_path(), [
         Instance(P.messages['test'])])
@@ -73,15 +90,47 @@ def test_max_paths(P):
     assert max_paths(U) == [[Instance(P.messages['test'], 0)]]
 
 
-def test_all_paths(P):
-    U = UoD.from_protocol(P)
-
-    assert all_paths(U) == [empty_path(), [
+def test_all_paths(P, Flexible):
+    assert all_paths(UoD.from_protocol(P)) == [empty_path(), [
         Instance(P.messages['test'], 0)]]
+
+    assert len(all_paths(UoD.from_protocol(Flexible))) > 2
 
 
 def test_refines(Q, P):
-    U = UoD.from_protocol(Q)
+    U = UoD()
     params = {'id', 'data'}
 
-    assert refines(U, params, Q, P)
+    assert refines(U, P.public_parameters.keys(), Q, P) == {"ok": True}
+
+
+def test_concurrency_elimination(Flexible, ShipFirst):
+    # print(all_paths(UoD.from_protocol(Flexible)))
+    # print(all_paths(UoD.from_protocol(ShipFirst)))
+    assert refines(UoD(), Flexible.public_parameters.keys(),
+                   ShipFirst, Flexible) == {"ok": True}
+
+    assert refines(UoD(), Flexible.public_parameters.keys(),
+                   Flexible, ShipFirst) != {"ok": True}
+
+
+def test_initiation_reduction():
+    spec = load_file('samples/bspl/refinement/initiation-reduction.bspl')
+    EitherStarts = spec.protocols["Either-Starts"]
+    BuyerStarts = spec.protocols["Buyer-Starts"]
+    assert refines(UoD(), EitherStarts.public_parameters.keys(),
+                   BuyerStarts, EitherStarts) == {"ok": True}
+
+    assert refines(UoD(), BuyerStarts.public_parameters.keys(),
+                   EitherStarts, BuyerStarts) != {"ok": True}
+
+
+def test_polymorphism():
+    spec = load_file('samples/bspl/refinement/polymorphism.bspl')
+    RFQ = spec.protocols["RFQ"]
+    RefinedRFQ = spec.protocols["Refined-RFQ"]
+    assert refines(UoD(), RFQ.public_parameters.keys(),
+                   RefinedRFQ, RFQ) == {"ok": True}
+
+    assert refines(UoD(), RefinedRFQ.public_parameters.keys(),
+                   RFQ, RefinedRFQ) != {"ok": True}
