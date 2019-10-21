@@ -597,3 +597,33 @@ def handle_atomicity(protocol, args):
         print("\nFormula:")
         print(json.dumps(formula, default=str, sort_keys=True, indent=2))
         print()
+
+
+def handle_projection(args):
+    role_name = args.input[0]
+    spec = load_file(args.input[1])
+
+    projections = []
+    for protocol in spec.protocols.values():
+        schema = protocol.schema
+        role = protocol.roles.get(role_name)
+        if not role:
+            raise LookupError("Role not found", role_name)
+
+        messages = role.messages(protocol).values()
+
+        if len(messages) > 0:
+            projection = {
+                'name': protocol.name,
+                'parameters': [p for p in schema['parameters']
+                               if any(p['name'] in m.parameters for m in messages)],
+                'private': [p for p in schema.get('private') or []
+                            if any(p['name'] in m.parameters for m in messages)],
+                'roles': [r for r in schema['roles']
+                          if any(m.sender.name == r['name']
+                                 or m.recipient.name == r['name']
+                                 for m in messages)],
+                'references': [m.schema for m in messages],
+            }
+            projections.append(projection)
+            print(projection)
