@@ -86,7 +86,12 @@ class Base():
 
 
 class Reference(Base):
-    pass
+    def format(self, ref=True):
+        parameters = self.schema.get('parameters') or self.schema.get('params')
+        return "{}({}, {})".format(self.name,
+                                   ", ".join([r['name']
+                                              for r in self.schema['roles']]),
+                                   ", ".join([Parameter(p).format() for p in parameters]))
 
 
 def reference(schema, parent):
@@ -643,7 +648,11 @@ def handle_projection(args):
         if not role:
             raise LookupError("Role not found", role_name)
 
-        messages = role.messages(protocol).values()
+        references = [
+            r for r in protocol.references if role in r.roles.values()
+            or r.type == 'message' and (role == r.sender or role == r.recipient)]
+
+        messages = [m for m in references if m.type == 'message']
 
         if len(messages) > 0:
             projection = {
@@ -657,7 +666,7 @@ def handle_projection(args):
                           if any(m.sender.name == r['name']
                                  or m.recipient.name == r['name']
                                  for m in messages)],
-                'references': [m.schema for m in messages],
+                'references': [r.schema for r in references],
             }
             projections.append(Protocol(projection, spec))
     for p in projections:
