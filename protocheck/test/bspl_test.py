@@ -24,6 +24,11 @@ def Bid(Auction):
     return Auction.messages['Bid']
 
 
+@pytest.fixture(scope="module")
+def WithReject():
+    return load_file('samples/bspl/composition').protocols['With-Reject']
+
+
 def test_keys(Bid, Auction):
     print(Auction.keys)
     assert [p.name for p in Auction.keys] == ["id"]
@@ -152,3 +157,32 @@ def test_protocol_is_atomic(Auction):
 
 def test_protocol_cover(Auction):
     assert Auction.cover
+
+
+def test_parameter_format(Bid):
+    assert Bid.parameters['bidID'].format() == "out bidID key"
+
+
+def test_message_format(Bid):
+    assert Bid.format(
+    ) == "B -> A: Bid[in id, out bidID key, out bid, nil done]"
+
+
+def test_protocol_format(Auction, WithReject):
+    assert Auction.format() == """Auction {
+  roles A, B
+  parameters out id key, out done
+  private bidID, bid
+
+  A -> B: Start[out id]
+  B -> A: Bid[in id, out bidID key, out bid, nil done]
+  A -> B: Stop[in id, out done]
+}"""
+
+    assert WithReject.format() == """With-Reject {
+  roles C, S
+  parameters out item key, out done
+
+  Order(C, S, out item key, out done)
+  S -> C: Reject[in item, out done]
+}"""

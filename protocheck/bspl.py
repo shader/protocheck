@@ -5,6 +5,7 @@ from protocheck.precedence import consistent, pairwise,     \
 from protocheck.bspl_parser import BsplParser
 from protocheck.logic import merge
 from functools import partial
+from more_itertools import intersperse
 import itertools
 import re
 import pprint
@@ -340,6 +341,25 @@ class Protocol(Base):
         dependencies on sibling protocols"
         return not self.ins - self.parent.ins
 
+    def format(self, ref=False):
+        if ref:
+            return "{}({}, {})".format(self.name,
+                                       ", ".join(self.roles),
+                                       ", ".join([p.format() for p in self.public_parameters.values()]))
+        else:
+            return """{} {{
+  roles {}
+  parameters {}
+{}
+  {}
+}}""".format(self.name,
+             ", ".join(self.roles.keys()),
+             ", ".join([p.format() for p in self.public_parameters.values()]),
+             "  private " +
+             ", ".join([p for p in self.private_parameters]) +
+             "\n" if self.private_parameters else "",
+             "\n  ".join([r.format(ref=True) for r in self.references]))
+
 
 class Message(Protocol):
     def __init__(self, schema, parent):
@@ -448,6 +468,12 @@ class Message(Protocol):
                    for p in map(partial(observe, self.recipient), self.ins | self.outs)]
         return and_(*clauses)
 
+    def format(self, ref=False):
+        return "{} -> {}: {}[{}]".format(self.sender.name,
+                                         self.recipient.name,
+                                         self.shortname,
+                                         ', '.join([p.format() for p in self.parameters.values()]))
+
 
 class Role(Base):
     def messages(self, protocol):
@@ -513,6 +539,13 @@ class Parameter(Base):
     def adornment(self):
         return self.schema['adornment']
 
+    def format(self):
+        base = "{} {}".format(self.adornment, self.name)
+        if self.key:
+            return base + " key"
+        else:
+            return base
+
 
 @wrap(name)
 def observe(role, event):
@@ -524,7 +557,7 @@ recv = observe
 
 
 def strip_latex(spec):
-    """Remove all instances of '\mapsto' and '\msf{}' from a latex listing, to make it proper BSPL"""
+    """Remove all instances of '\\mapsto' and '\\msf{}' from a latex listing, to make it proper BSPL"""
     spec = re.sub(r'\$\\msf{(\w+)}\$', r'\1', spec)
     spec = re.sub(r'\$\\mapsto\$', r'->', spec)
 
@@ -615,6 +648,7 @@ def handle_projection(args):
         if len(messages) > 0:
             projection = {
                 'name': protocol.name,
+                'type': 'protocol',
                 'parameters': [p for p in schema['parameters']
                                if any(p['name'] in m.parameters for m in messages)],
                 'private': [p for p in schema.get('private') or []
@@ -625,5 +659,6 @@ def handle_projection(args):
                                  for m in messages)],
                 'references': [m.schema for m in messages],
             }
-            projections.append(projection)
-            print(projection)
+            projections.append(Protocol(projection, spec))
+    for p in projections:
+        print(p.format())
