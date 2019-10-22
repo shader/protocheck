@@ -14,3 +14,5 @@ Thumbs.db
 .tox/
 bspl_parser.py
 spl_parser.py
+flows.json
+.flows.json.backup
