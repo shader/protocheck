@@ -365,6 +365,30 @@ class Protocol(Base):
              "\n" if self.private_parameters else "",
              "\n  ".join([r.format(ref=True) for r in self.references]))
 
+    def projection(protocol, role):
+        schema = protocol.schema
+        references = [
+            r for r in protocol.references if role in r.roles.values()
+            or r.type == 'message' and (role == r.sender or role == r.recipient)]
+
+        messages = [m for m in references if m.type == 'message']
+
+        if len(messages) > 0:
+            projection = {
+                'name': protocol.name,
+                'type': 'protocol',
+                'parameters': [p for p in schema['parameters']
+                               if any(p['name'] in m.parameters for m in messages)],
+                'private': [p for p in schema.get('private') or []
+                            if any(p['name'] in m.parameters for m in messages)],
+                'roles': [r for r in schema['roles']
+                          if any(m.sender.name == r['name']
+                                 or m.recipient.name == r['name']
+                                 for m in messages)],
+                'references': [r.schema for r in references],
+            }
+            return Protocol(projection, protocol.parent)
+
 
 class Message(Protocol):
     def __init__(self, schema, parent):
@@ -648,26 +672,7 @@ def handle_projection(args):
         if not role:
             raise LookupError("Role not found", role_name)
 
-        references = [
-            r for r in protocol.references if role in r.roles.values()
-            or r.type == 'message' and (role == r.sender or role == r.recipient)]
+        projections.append(protocol.projection(role))
 
-        messages = [m for m in references if m.type == 'message']
-
-        if len(messages) > 0:
-            projection = {
-                'name': protocol.name,
-                'type': 'protocol',
-                'parameters': [p for p in schema['parameters']
-                               if any(p['name'] in m.parameters for m in messages)],
-                'private': [p for p in schema.get('private') or []
-                            if any(p['name'] in m.parameters for m in messages)],
-                'roles': [r for r in schema['roles']
-                          if any(m.sender.name == r['name']
-                                 or m.recipient.name == r['name']
-                                 for m in messages)],
-                'references': [r.schema for r in references],
-            }
-            projections.append(Protocol(projection, spec))
     for p in projections:
         print(p.format())
