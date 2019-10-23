@@ -41,6 +41,10 @@ class Specification():
         for p in self.protocols.values():
             p.resolve_references(self)
 
+    @property
+    def roles(self):
+        return set(r for r in p.roles for p in self.protocols.values())
+
 
 def load(definition, path):
     parser = BsplParser(parseinfo=False)
