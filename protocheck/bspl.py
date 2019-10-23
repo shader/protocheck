@@ -672,6 +672,9 @@ def handle_projection(args):
     projections = []
     for protocol in spec.protocols.values():
         schema = protocol.schema
+        if args.verbose:
+            print(schema)
+
         role = protocol.roles.get(role_name)
         if not role:
             raise LookupError("Role not found", role_name)
