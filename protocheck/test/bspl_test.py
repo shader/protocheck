@@ -31,7 +31,7 @@ def WithReject():
 
 def test_keys(Bid, Auction):
     print(Auction.keys)
-    assert [p.name for p in Auction.keys] == ["id"]
+    assert [p for p in Auction.keys] == ["id"]
     # id explicitly declared key in P, but not message. Should still be considered a key
     print(Bid.keys)
     assert len({p for p in Bid.keys}) == 2

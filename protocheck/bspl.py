@@ -129,7 +129,7 @@ class Protocol(Base):
                                   for p in schema['parameters']}
         self.private_parameters = {p['name']: Parameter(p, self)
                                    for p in schema.get('private') or []}
-        self.keys = {p for p in self.parameters.values()
+        self.keys = {p.name for p in self.parameters.values()
                      if p.key
                      or parent.type == 'protocol'
                      and p.name in parent.parameters
