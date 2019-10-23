@@ -32,16 +32,31 @@ def ShipFirst(ConcurrencyElimination):
     return ConcurrencyElimination.protocols["Ship-First"]
 
 
+@pytest.fixture(scope="module")
+def KeyReduction():
+    return load_file('samples/bspl/refinement/key-reduction.bspl')
+
+
 def test_known_empty(P):
-    assert known(empty_path(), P.roles['A']) == set()
+    assert known(empty_path(), {}, P.roles['A']) == set()
+
+
+def test_known_simple(P):
+    print("test keys: ", P.messages['test'].keys)
+    assert known([Instance(P.messages['test'], 0)],
+                 P.messages['test'].keys, P.roles['A']) == {'data', 'id'}
 
 
 def test_viable(P, Flexible):
     test = P.messages['test']
     assert viable(empty_path(), test)
     assert not viable([Instance(test, 0)], test)
-    assert viable([Instance(Flexible.messages["rfq"], 0)],
-                  Flexible.messages["pay"])
+
+    rfq = Flexible.messages['rfq']
+    print("S knows: ", known([Instance(rfq, 0)],
+                             rfq.keys, Flexible.roles['S']))
+    assert rfq.keys == Flexible.messages['pay'].keys
+    assert viable([Instance(rfq, 0)], Flexible.messages["pay"])
 
 
 def test_branches(P):
@@ -68,7 +83,7 @@ def test_sources(P):
     assert sources([Instance(P.messages['test'])], 'id') == {'A'}
 
 
-def test_subsumes(P, Q):
+def test_subsumes(P, Q, KeyReduction):
     U = UoD.from_protocol(P)
     params = {'id', 'data'}
     assert subsumes(UoD(), set(), empty_path(), empty_path())
@@ -82,6 +97,19 @@ def test_subsumes(P, Q):
 
     assert not subsumes(
         U, params, [Instance(P.messages['test'])], empty_path())
+
+    KeyP = KeyReduction.protocols['P']
+    KeyQ = KeyReduction.protocols['Q']
+    print(known([Instance(KeyQ.messages['test'], 0)],
+                KeyQ.messages['test'].keys, KeyQ.roles['A']))
+    print(known([Instance(KeyP.messages['test'], 0)],
+                KeyQ.messages['test'].keys, KeyQ.roles['A']))
+    assert subsumes(
+        UoD.from_protocol(KeyP),
+        KeyP.keys,
+        [Instance(KeyQ.messages['test'], 0)],
+        [Instance(KeyP.messages['test'], 0)]
+    )
 
 
 def test_max_paths(P):
@@ -130,7 +158,37 @@ def test_polymorphism():
     RFQ = spec.protocols["RFQ"]
     RefinedRFQ = spec.protocols["Refined-RFQ"]
     assert refines(UoD(), RFQ.public_parameters.keys(),
-                   RefinedRFQ, RFQ) == {"ok": True}
+                   RefinedRFQ, RFQ) == \
+        {"ok": False,
+         'path': [Instance(RefinedRFQ.messages['Introduction'], 0)],
+         'reason': 'Refined-RFQ has path that does not subsume any path in RFQ'}
 
     assert refines(UoD(), RefinedRFQ.public_parameters.keys(),
                    RFQ, RefinedRFQ) != {"ok": True}
+
+
+def test_dependent():
+    spec = load_file('samples/bspl/refinement/basic-dependent.bspl')
+    P = spec.protocols["P"]
+    Q = spec.protocols["Q"]
+    assert refines(UoD(), P.public_parameters.keys(),
+                   Q, P) == {"ok": True}
+
+    assert refines(UoD(), Q.public_parameters.keys(),
+                   P, Q) == {"ok": True}
+
+
+def test_key_reduction():
+    spec = load_file('samples/bspl/refinement/key-reduction.bspl')
+    P = spec.protocols["P"]
+    p_test = P.messages['test']
+    Q = spec.protocols["Q"]
+    q_test = Q.messages['test']
+    print("P test keys: ", p_test.keys)
+    print("Q test keys: ", q_test.keys)
+
+    assert refines(UoD(), P.public_parameters.keys(),
+                   Q, P) == {"ok": True}
+
+    assert refines(UoD(), Q.public_parameters.keys(),
+                   P, Q) != {"ok": True}

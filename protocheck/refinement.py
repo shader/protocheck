@@ -47,13 +47,22 @@ class Instance():
         return self.delay < float('inf')
 
 
-def known(path, R):
+def total_keys(path):
+    keys = set()
+    for i in path:
+        keys.update(i.msg.keys)
+    return keys
+
+
+def known(path, keys, R):
     """Compute the set of parameters observed by role R after enacting path"""
     time = 0
     k = set()
     for instance in path:
-        if (instance.msg.sender.name == R.name
-                or instance.msg.recipient.name == R.name and instance.delay + time <= len(path)):
+        if (instance.msg.keys >= keys
+            and (instance.msg.sender.name == R.name
+                 or (instance.msg.recipient.name == R.name
+                     and instance.delay + time <= len(path)))):
             k.update(set(instance.msg.ins))
             k.update(set(instance.msg.outs))
         time += 1
@@ -61,7 +70,7 @@ def known(path, R):
 
 
 def viable(path, msg):
-    k = known(path, msg.sender)
+    k = known(path, msg.keys, msg.sender)
     return k.issuperset(msg.ins) and k.intersection(msg.outs) == set()
 
 
@@ -83,7 +92,7 @@ class UoD():
                         'name': p + '-source',
                         'sender': external.name,
                         'recipient': m.sender.name,
-                        'parameters': [k.schema for k in protocol.keys if k.name is not p] + [{'adornment': 'out', 'name': p, 'key': m.parameters[p].key}]
+                        'parameters': [m.parameters[k].schema for k in protocol.keys if k is not p] + [{'adornment': 'out', 'name': p, 'key': m.parameters[p].key}]
                     }
                     dependencies[p] = Message(schema, protocol)
         uod = UoD(list(protocol.messages.values()) + list(dependencies.values()),
@@ -132,10 +141,11 @@ def subsumes(U, params, a, b):
             # print("sources don't match: {} != {}".format(sources_a, sources_b))
             return False
     for r in U.roles:
-        known_a = known(a, r).intersection(params)
-        known_b = known(b, r).intersection(params)
+        known_a = known(a, total_keys(a), r).intersection(params)
+        known_b = known(b, total_keys(a), r).intersection(params)
         if known_a != known_b:
-            # print("knowledge doesn't match: {} != {}".format(known_a, known_b))
+            print("{}'s knowledge doesn't match: {} != {}".format(
+                r.name, known_a, known_b))
             return False
     if len(b) > 1:
         b2 = b[:-1]
@@ -171,6 +181,7 @@ def all_paths(U):
 
 
 def refines(U, params, Q, P, verbose=False):
+    """Check that Q refines P"""
     U_Q = U + UoD.from_protocol(Q)
     U_P = U + UoD.from_protocol(P)
 
