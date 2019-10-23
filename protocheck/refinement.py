@@ -1,4 +1,4 @@
-from protocheck.bspl import load_file
+from protocheck.bspl import load_file, Message, Role
 
 
 def handle_refinement(args):
@@ -7,7 +7,8 @@ def handle_refinement(args):
     Q = spec.protocols[args.input[1]]
     P = spec.protocols[args.input[2]]
 
-    result = refines(UoD(), P.public_parameters.keys(), Q, P)
+    result = refines(UoD(), P.public_parameters.keys(),
+                     Q, P, verbose=args.verbose)
     if result["ok"] == True:
         print("  {} Refines {}".format(Q.name, P.name))
         return True
@@ -71,7 +72,23 @@ class UoD():
 
     @staticmethod
     def from_protocol(protocol):
-        return UoD(protocol.messages.values(), protocol.roles.values())
+        external = Role({'name': '*External*'}, protocol.parent)
+        protocol.roles[external.name] = external
+        dependencies = {}
+        for p in protocol.ins.union(protocol.nils):
+            # generate messages that provide p to each sender
+            for m in protocol.messages.values():
+                if p in m.parameters and not p in dependencies:
+                    schema = {
+                        'name': p + '-source',
+                        'sender': external.name,
+                        'recipient': m.sender.name,
+                        'parameters': [k.schema for k in protocol.keys if k.name is not p] + [{'adornment': 'out', 'name': p, 'key': m.parameters[p].key}]
+                    }
+                    dependencies[p] = Message(schema, protocol)
+        uod = UoD(list(protocol.messages.values()) + list(dependencies.values()),
+                  protocol.roles.values())
+        return uod
 
     def __add__(self, other):
         return UoD(self.messages.union(other.messages), self.roles.union(other.roles))
@@ -153,12 +170,16 @@ def all_paths(U):
     return paths
 
 
-def refines(U, params, Q, P):
+def refines(U, params, Q, P, verbose=False):
     U_Q = U + UoD.from_protocol(Q)
     U_P = U + UoD.from_protocol(P)
 
     paths_Q = all_paths(U_Q)
     paths_P = all_paths(U_P)
+
+    if verbose:
+        print("{} paths: ".format(Q.name), paths_Q)
+        print("{} paths: ".format(P.name), paths_P)
 
     for q in paths_Q:
         # print("q: ", q)
@@ -180,6 +201,6 @@ def refines(U, params, Q, P):
                 "ok": False,
                 "path": q,
                 "match": match,
-                "reason": "P has branches but Q does not"
+                "reason": "path in {} has branches, but path in {} does not".format(P.name, Q.name)
             }
     return {"ok": True}
