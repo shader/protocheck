@@ -14,8 +14,10 @@ roles = {}
 base_port = 8000
 
 
-def add_role(name):
-    roles[name] = len(roles)
+def get_role_port(name):
+    if not roles.get(name):
+        roles[name] = len(roles)
+    return roles[name]
 
 
 def node_id():
@@ -39,7 +41,7 @@ def udp_in_node(role, base_port=base_port):
         "type": "udp in",
         "name": role.name,
         "iface": "",
-        "port": base_port + roles[role.name],
+        "port": base_port + get_role_port(role.name),
         "ipv": "udp4",
         "multicast": False,
         "group": "",
@@ -54,7 +56,7 @@ def udp_out_node(role, addr="localhost", base_port=base_port):
         "name": "to " + role.name,
         "iface": "",
         "addr": addr,
-        "port": base_port + roles[role.name],
+        "port": base_port + get_role_port(role.name),
         "ipv": "udp4",
         "outport": "",
         "multicast": False,
@@ -146,7 +148,7 @@ def out_nodes(role, message):
     nodes = [
         bspl_message(message, sending=True),
         json_node(),
-        udp_out_node(role)
+        udp_out_node(message.recipient)
     ]
     connect_nodes(nodes)
     return nodes
@@ -192,7 +194,6 @@ def handle_node_flow(protocol, args):
         nodes = []
 
     for role in protocol.roles.values():
-        add_role(role.name)
         projection = protocol.projection(role)
         if not projection:
             break
