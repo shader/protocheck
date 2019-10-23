@@ -27,7 +27,7 @@ Protocheck is an application designed to verify various correctness properties o
        $ grako bspl.gr --name Bspl >bspl_parser.py
        #+end_example
 
-    
+
 ** Usage
    When installed globally, protocheck provides the 'bspl' entrypoint, that can be used as follows:
 
@@ -89,3 +89,14 @@ T:\> py -mrun bspl.py
    - The default heuristics for protocol verification are not always correct. If you are unsure of the answer, try again with '--exhaustive'.
    - There are probably still some bugs. If you find a case that doesn't work as you expect, please record everything with '-v' and submit an issue.
    - For easier testing of listings used in latex papers, protocheck will automatically strip latex formatting before parsing a protocol, so they should work without modification.
+
+
+** Tasks
+*** TODO Make model objects independent of parsing pipeline
+    Currently, the only constructors for Protocol, Message, etc. take a 'schema' as input, which is the plain data format produced by the parsing system.
+
+    For easier extension and use in tools that generate protocols, it would be better if simpler constructors existed so that the objects could be constructed directly, instead of based on an intermediate data format.
+*** TODO Support multiple recipient roles
+    Currently, BSPL's syntax only supports a single recipient role for each message. However, it's a very simple extension semantically to support multiple recipients, and this would greatly simplify certain applications.
+    Specifically, generating messages that provide the 'in' parameters of a dependent protocol for checking refinement currently requires generating one message per recipient, each of which can be interleaved anywhere in the enactment. That's a very highly combinatorial expansion of possibilities, when they could be condensed to a single message that produces the same information at all of the endpoints.
+    However, each message currently only has one delay parameter. Multiple recipient roles with a single delay would mean that they all observe the information at the same time.
