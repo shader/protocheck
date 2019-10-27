@@ -37,6 +37,11 @@ def KeyReduction():
     return load_file('samples/bspl/refinement/key-reduction.bspl')
 
 
+@pytest.fixture(scope="module")
+def AllIn():
+    return load_file('samples/bspl/refinement/all-in.bspl')
+
+
 def test_known_empty(P):
     assert known(empty_path(), {}, P.roles['A']) == set()
 
@@ -57,6 +62,14 @@ def test_viable(P, Flexible):
                              rfq.keys, Flexible.roles['S']))
     assert rfq.keys == Flexible.messages['pay'].keys
     assert viable([Instance(rfq, 0)], Flexible.messages["pay"])
+
+
+def test_viable_all_in(AllIn):
+    P = AllIn.protocols['P']
+    test = P.messages['test']
+
+    assert not viable(empty_path(), test)
+    assert not viable([Instance(test, 0)], test)
 
 
 def test_branches(P):
@@ -83,7 +96,7 @@ def test_sources(P):
     assert sources([Instance(P.messages['test'])], 'id') == {'A'}
 
 
-def test_subsumes(P, Q, KeyReduction):
+def test_subsumes(P, Q):
     U = UoD.from_protocol(P)
     params = {'id', 'data'}
     assert subsumes(UoD(), set(), empty_path(), empty_path())
@@ -98,6 +111,19 @@ def test_subsumes(P, Q, KeyReduction):
     assert not subsumes(
         U, params, [Instance(P.messages['test'])], empty_path())
 
+
+def test_subsumes_initiation_reduction():
+    spec = load_file('samples/bspl/refinement/initiation-reduction.bspl')
+    EitherStarts = spec.protocols["Either-Starts"]
+    BuyerStarts = spec.protocols["Buyer-Starts"]
+    assert subsumes(UoD.from_protocol(EitherStarts),
+                    EitherStarts.public_parameters.keys(),
+                    [Instance(BuyerStarts.messages['rfq'], 0)],
+                    [Instance(EitherStarts.messages['rfq'], 0)],
+                    verbose=True)
+
+
+def test_subsumes_key_reduction(KeyReduction):
     KeyP = KeyReduction.protocols['P']
     KeyQ = KeyReduction.protocols['Q']
     print(known([Instance(KeyQ.messages['test'], 0)],
@@ -106,10 +132,10 @@ def test_subsumes(P, Q, KeyReduction):
                 KeyQ.messages['test'].keys, KeyQ.roles['A']))
     assert subsumes(
         UoD.from_protocol(KeyP),
-        KeyP.keys,
+        KeyP.public_parameters.keys(),
         [Instance(KeyQ.messages['test'], 0)],
-        [Instance(KeyP.messages['test'], 0)]
-    )
+        [Instance(KeyP.messages['test'], 0)],
+        verbose=True)
 
 
 def test_max_paths(P):
@@ -146,11 +172,15 @@ def test_initiation_reduction():
     spec = load_file('samples/bspl/refinement/initiation-reduction.bspl')
     EitherStarts = spec.protocols["Either-Starts"]
     BuyerStarts = spec.protocols["Buyer-Starts"]
-    assert refines(UoD(), EitherStarts.public_parameters.keys(),
-                   BuyerStarts, EitherStarts) == {"ok": True}
+    assert refines(UoD(),
+                   EitherStarts.public_parameters.keys(),
+                   BuyerStarts,
+                   EitherStarts,
+                   verbose=True) == {"ok": True}
 
     assert refines(UoD(), BuyerStarts.public_parameters.keys(),
-                   EitherStarts, BuyerStarts) != {"ok": True}
+                   EitherStarts, BuyerStarts,
+                   verbose=True) != {"ok": True}
 
 
 def test_polymorphism():
@@ -192,3 +222,17 @@ def test_key_reduction():
 
     assert refines(UoD(), Q.public_parameters.keys(),
                    P, Q) != {"ok": True}
+
+
+def test_all_in():
+    spec = load_file('samples/bspl/refinement/all-in.bspl')
+    P = spec.protocols["P"]
+    p_test = P.messages['test']
+    Q = spec.protocols["Q"]
+    q_test = Q.messages['test']
+
+    assert refines(UoD(), P.public_parameters.keys(),
+                   Q, P) == {"ok": True}
+
+    assert refines(UoD(), Q.public_parameters.keys(),
+                   P, Q) == {"ok": True}
