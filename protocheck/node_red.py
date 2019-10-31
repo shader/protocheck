@@ -230,17 +230,18 @@ def handle_node_flow(args):
     messages = {role: [m for m in spec.messages
                        if m.sender == role or m.recipient == role]
                 for role in spec.roles.values()}
-    for role in sorted(set(spec.roles.values()),
-                       key=lambda r: len(
-                           [m for m in messages[r] if m.sender == r]),
-                       reverse=True):
+    roles = sorted(set(r for r in spec.roles.values() if len(messages[r])),
+                   key=lambda r: len(
+                       [m for m in messages[r] if m.sender == r]),
+                   reverse=True)
+    for role in roles:
         parameters = {p for m in messages[role] for p in m.parameters.values()}
         tab = create_role_tab(role)
         role_nodes = entry_nodes(role, parameters)
 
         recipients = {m.recipient.name:
                       send_nodes(m.recipient) for m in messages[role] if m.recipient != role}
-        for recipient in set(spec.roles.values()):
+        for recipient in roles:
             if recipient == role:
                 continue
             for message in spec.messages:
