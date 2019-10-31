@@ -20,7 +20,7 @@ def handle_refinement(args):
 
 def empty_path():
     """The empty path is a list with no message instances"""
-    return []
+    return tuple()
 
 
 class Instance():
@@ -29,7 +29,7 @@ class Instance():
         self.delay = delay
 
     def __str__(self):
-        return "({},{})".format(self.msg.name, self.delay)
+        return "<{},{}>".format(self.msg.name, self.delay)
 
     def __repr__(self):
         return str(self)
@@ -76,7 +76,9 @@ def viable(path, msg):
         # only allow one copy of an all "in" message
         return False
     k = known(path, msg.keys, msg.sender)
-    return k.issuperset(msg.ins) and k.intersection(msg.outs) == set() and k.intersection(msg.nils) == set()
+    return k.issuperset(msg.ins) \
+        and k.intersection(msg.outs) == set() \
+        and k.intersection(msg.nils) == set()
 
 
 class UoD():
@@ -122,14 +124,16 @@ def unreceived(path):
     return set(i for i in path if i.delay == float("inf"))
 
 
+def receive(path, instance):
+    p = list(path)
+    i = p.index(instance)
+    p[i] = Instance(instance.msg, len(p) - i - 1)
+    return tuple(p)
+
+
 def extensions(U, path):
-    extended = [path + [b] for b in branches(U, path)]
-    for u in unreceived(path):
-        p = path.copy()
-        i = p.index(u)
-        p[i] = Instance(u.msg, len(p) - i - 1)
-        extended.append(p)
-    return extended
+    xs = {path + (b,) for b in branches(U, path)}
+    return xs.union({receive(path, u) for u in unreceived(path)})
 
 
 def sources(path, p):
@@ -184,13 +188,54 @@ def max_paths(U):
     return max_paths
 
 
-def all_paths(U, verbose=False):
-    paths = []
+def total_knowledge(U, path):
+    k = set()
+    for r in U.roles:
+        for keys in key_sets(path):
+            k.update(known(path, keys, r))
+    return k
+
+
+def path_liveness(protocol):
+    U = UoD.from_protocol(protocol)
     new_paths = [empty_path()]
+    while len(new_paths):
+        p = new_paths.pop()
+        xs = extensions(U, p)
+        if xs:
+            new_paths.extend(xs)
+        else:
+            if total_knowledge(U, p).intersection(protocol.outs) < protocol.outs:
+                return {"live": False,
+                        "reason": "Found path that does not extend to completion",
+                        "path": p}
+    return {"live": True}
+
+
+def path_safety(protocol):
+    U = UoD.from_protocol(protocol)
+    parameters = {p for m in protocol.messages.values() for p in m.outs}
+    new_paths = [empty_path()]
+    while len(new_paths):
+        path = new_paths.pop()
+        xs = extensions(U, path)
+        if xs:
+            new_paths.extend(xs)
+        for p in parameters:
+            if len(sources(path, p)) > 1:
+                return {"safe": False,
+                        "reason": "Found parameter with multiple sources in a path",
+                        "path": path,
+                        "parameter": p}
+    return {"safe": True}
+
+
+def all_paths(U, verbose=False):
+    paths = set()
+    new_paths = {empty_path()}
     total_paths = 0
     longest_path = 0
-    total_unreceived = 0
-    while len(new_paths):
+    while new_paths:
         p = new_paths.pop()
         if len(p) > longest_path:
             longest_path = len(p)
@@ -199,15 +244,13 @@ def all_paths(U, verbose=False):
             exit(1)
         xs = extensions(U, p)
         if xs:
-            new_paths.extend(xs)
-            total_unreceived += sum(len(unreceived(p)) for p in xs)
+            new_paths.update(xs)
         u = unreceived(p)
-        total_unreceived -= len(u)
         if not u:
-            paths.insert(len(paths), p)
+            paths.add(p)
         if verbose:
-            print("\r{} paths, longest path: {}, unreceived: {}, unprocessed: {}".format(
-                len(paths), longest_path, total_unreceived, len(new_paths)), end='')
+            print("{} paths, longest path: {}, unprocessed: {}".format(
+                len(paths), longest_path, len(new_paths)), end='\n')
             if len(paths) % 1000 == 0:
                 print(p)
         total_paths = len(paths)
@@ -230,8 +273,8 @@ def refines(U, params, Q, P, verbose=False):
     U_Q = U + UoD.from_protocol(Q)
     U_P = U + UoD.from_protocol(P)
 
-    paths_Q = all_paths(U_Q, verbose)
-    paths_P = all_paths(U_P, verbose)
+    paths_Q = max_paths(U_Q)
+    paths_P = max_paths(U_P)
 
     longest_Q = longest_P = []
     for q in paths_Q:
@@ -255,7 +298,7 @@ def refines(U, params, Q, P, verbose=False):
         match = None
         for p in paths_P:
             # print("p: ", p)
-            if subsumes(U_Q, params, q, p):
+            if subsumes(U_P, params, q, p):
                 match = p
                 # print("p branches: ", branches(U_P, p))
                 # print("q branches: ", branches(U_Q, q))
