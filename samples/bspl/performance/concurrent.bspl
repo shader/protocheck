@@ -1,0 +1,73 @@
+One {
+  roles A, B
+  parameters out a
+
+  A -> B: one[out a]
+}
+
+Two {
+  roles A, B
+  parameters out a
+  private b
+
+  B -> A: one[out a]
+  B -> A: two[out b]
+}
+
+Three {
+  roles A, B
+  parameters out a
+  private b, c
+
+  B -> A: one[out a]
+  B -> A: two[out b]
+  B -> A: three[out c]
+}
+
+Four {
+  roles A, B
+  parameters out a
+  private b, c, d
+
+  B -> A: one[out a]
+  B -> A: two[out b]
+  B -> A: three[out c]
+  B -> A: four[out d]
+}
+
+Five {
+  roles A, B
+  parameters out a
+  private b, c, d, e
+
+  B -> A: one[out a]
+  B -> A: two[out b]
+  B -> A: three[out c]
+  B -> A: four[out d]
+  B -> A: five[out e]
+}
+//
+// Six {
+//   roles A, B
+//   private a, b, c, d, e, f
+//
+//   B -> A: one[out a]
+//   B -> A: two[out b]
+//   B -> A: three[out c]
+//   B -> A: four[out d]
+//   B -> A: five[out e]
+//   B -> A: six[out f]
+// }
+//
+// Seven {
+//   roles A, B
+//   private a, b, c, d, e, f, g
+//
+//   B -> A: one[out a]
+//   B -> A: two[out b]
+//   B -> A: three[out c]
+//   B -> A: four[out d]
+//   B -> A: five[out e]
+//   B -> A: six[out f]
+//   B -> A: six[out g]
+// }

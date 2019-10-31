@@ -1,0 +1,75 @@
+One {
+  roles A, B
+  parameters out a
+
+  B -> A: one[out a]
+}
+
+Two {
+  roles A, B
+  parameters out a
+  private b
+
+  B -> A: one[out a]
+  A -> B: two[in a, out b]
+}
+
+Three {
+  roles A, B
+  parameters out a
+  private b, c
+
+  B -> A: one[out a]
+  A -> B: two[in a, out b]
+  B -> A: three[in b, out c]
+}
+
+Four {
+  roles A, B
+  parameters out a
+  private b, c, d
+
+  B -> A: one[out a]
+  A -> B: two[in a, out b]
+  B -> A: three[in b, out c]
+  A -> B: four[in c, out d]
+}
+
+Five {
+  roles A, B
+  parameters out a
+  private b, c, d, e
+
+  B -> A: one[out a]
+  A -> B: two[in a, out b]
+  B -> A: three[in b, out c]
+  A -> B: four[in c, out d]
+  B -> A: five[in d, out e]
+}
+
+Six {
+  roles A, B
+  parameters out a
+  private b, c, d, e, f
+
+  B -> A: one[out a]
+  A -> B: two[in a, out b]
+  B -> A: three[in b, out c]
+  A -> B: four[in c, out d]
+  B -> A: five[in d, out e]
+  A -> B: six[in e, out f]
+}
+
+Seven {
+  roles A, B
+  parameters out a
+  private b, c, d, e, f, g
+
+  B -> A: one[out a]
+  A -> B: two[in a, out b]
+  B -> A: three[in b, out c]
+  A -> B: four[in c, out d]
+  B -> A: five[in d, out e]
+  A -> B: six[in e, out f]
+  B -> A: seven[in f, out g]
+}

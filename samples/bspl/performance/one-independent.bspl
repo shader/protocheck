@@ -1,0 +1,83 @@
+One {
+  roles A, B
+  parameters out ID key
+  private a
+
+  A -> B: start[out ID]
+  B -> A: one[out a]
+}
+
+Two {
+  roles A, B
+  parameters out ID key
+  private a, b
+
+  A -> B: start[out ID]
+  B -> A: one[in ID, out a]
+  A -> B: two[out b]
+}
+
+Three {
+  roles A, B
+  parameters out ID key
+  private a, b, c
+
+  A -> B: start[out ID]
+  B -> A: one[in ID, out a]
+  A -> B: two[in ID, in a, out b]
+  B -> A: three[out c]
+}
+
+Four {
+  roles A, B
+  parameters out ID key
+  private a, b, c, d
+
+  A -> B: start[out ID]
+  B -> A: one[in ID, out a]
+  A -> B: two[in ID, in a, out b]
+  B -> A: three[in ID, in b, out c]
+  A -> B: four[out d]
+}
+
+Five {
+  roles A, B
+  parameters out ID key
+  private a, b, c, d, e
+
+  A -> B: start[out ID]
+  B -> A: one[in ID, out a]
+  A -> B: two[in ID, in a, out b]
+  B -> A: three[in ID, in b, out c]
+  A -> B: four[in ID, in c, out d]
+  B -> A: five[out e]
+}
+
+Six {
+  roles A, B
+  parameters out ID key
+  private a, b, c, d, e, f
+
+  A -> B: start[out ID]
+  B -> A: one[in ID, out a]
+  A -> B: two[in ID, in a, out b]
+  B -> A: three[in ID, in b, out c]
+  A -> B: four[in ID, in c, out d]
+  B -> A: five[in ID, in d, out e]
+  A -> B: six[out f]
+}
+
+Seven {
+  roles A, B
+  parameters out ID key
+  private a, b, c, d, e, f, g
+
+  A -> B: start[out ID]
+  B -> A: one[in ID, out a]
+  A -> B: two[in ID, in a, out b]
+  B -> A: three[in ID, in b, out c]
+  A -> B: four[in ID, in c, out d]
+  B -> A: five[in ID, in d, out e]
+  A -> B: six[in ID, in e, out f]
+  B -> A: seven[out g]
+}
