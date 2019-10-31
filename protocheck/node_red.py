@@ -24,11 +24,11 @@ def node_id():
     return '{:08x}.{:06x}'.format(random.randrange(16**8), random.randrange(16**6))
 
 
-def create_role_tab(protocol, role):
+def create_role_tab(role):
     tab = {
         "id": node_id(),
         "type": "tab",
-        "label": protocol.name + " - " + role.name,
+        "label": role.name,
         "disabled": False,
         "info": ""
     }
@@ -106,8 +106,8 @@ def connect_nodes(nodes):
             connect(nodes[i - 1], nodes[i])
 
 
-def parameter_string(protocol):
-    return ", ".join([p.format() for p in protocol.parameters.values()])
+def parameter_string(parameters):
+    return ", ".join([p.format() for p in parameters])
 
 
 def bspl_message(message, sending=True):
@@ -115,18 +115,18 @@ def bspl_message(message, sending=True):
         "id": node_id(),
         "type": "bspl-message",
         "name": "send " + message.name,
-        "spec": parameter_string(message),
+        "spec": parameter_string(message.parameters.values()),
         "width": 100
     }
 
 
-def bspl_observer(role, protocol, sending=True):
+def bspl_observer(role, parameters, sending=True):
     return {
         "id": node_id(),
         "type": "bspl-observer",
-        "name": protocol.name + " " + role,
+        "name": role,
         "timeout": 60000,
-        "spec": parameter_string(protocol),
+        "spec": parameter_string(parameters),
         "width": 40
     }
 
@@ -182,8 +182,9 @@ def place(tab, nodes):
             rows += 1
 
 
-def handle_node_flow(protocol, args):
-    path = args.output
+def handle_node_flow(args):
+    spec = load_file(args.input[0])
+    path = args.input[1] if len(args.input) > 1 else args.output
     if args.append:
         try:
             with open(path, 'r') as file:
@@ -193,14 +194,14 @@ def handle_node_flow(protocol, args):
     else:
         nodes = []
 
-    for role in protocol.roles.values():
-        projection = protocol.projection(role)
-        if not projection:
-            break
-        tab = create_role_tab(protocol, role)
-        role_nodes = entry_nodes(role, projection)
+    for role in set(spec.roles.values()):
+        parameters = {
+            p for m in spec.messages for p in m.parameters.values()
+            if m.sender == role or m.recipient == role}
+        tab = create_role_tab(role)
+        role_nodes = entry_nodes(role, parameters)
 
-        for message in protocol.messages.values():
+        for message in spec.messages:
             if message.sender == role:
                 role_nodes.extend(out_nodes(role, message))
 
@@ -210,6 +211,3 @@ def handle_node_flow(protocol, args):
 
     with open(path, 'w') as file:
         json.dump(nodes, file)
-
-    # in case we're processing multiple protocols at once, append the rest of them
-    args.append = True
