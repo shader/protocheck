@@ -111,12 +111,13 @@ def parameter_string(parameters):
 
 
 def bspl_message(message, sending=True):
+    name = "send " + message.name
     return {
         "id": node_id(),
         "type": "bspl-message",
-        "name": "send " + message.name,
+        "name": name,
         "spec": parameter_string(message.parameters.values()),
-        "width": 100
+        "width": 50 + len(name) * 5
     }
 
 
@@ -127,12 +128,25 @@ def bspl_observer(role, parameters, sending=True):
         "name": role,
         "timeout": 60000,
         "spec": parameter_string(parameters),
-        "width": 40
+        "width": len(role) * 5 + 60
     }
 
 
-def place(tab, nodes):
-    pass
+def inject(parameters):
+    parameters = {p for p in parameters if p.adornment == "out" or p.key}
+    return {
+        "id": node_id(),
+        "type": "inject",
+        "name": "",
+        "topic": "",
+        "payload": json.dumps({p.name: p.name for p in parameters}),
+        "payloadType": "json",
+        "repeat": "",
+        "crontab": "",
+        "once": False,
+        "onceDelay": 0.1,
+        "width": 60
+    }
 
 
 def entry_nodes(role, spec):
@@ -146,6 +160,7 @@ def entry_nodes(role, spec):
 
 def out_nodes(role, message):
     nodes = [
+        inject(message.parameters.values()),
         bspl_message(message, sending=True),
         json_node(),
         udp_out_node(message.recipient)
@@ -173,13 +188,17 @@ def place(tab, nodes):
         n['z'] = tab['id']
         if backwires.get(n['id']):
             prev = node_map[backwires[n['id']][0]]
-            n['x'] = n.get('width', 0) + prev['x'] + 140 + \
-                (prev['width'] if prev.get('width') else 0)
+            n['x'] = n.get('width', 0) / 2 + prev['x'] + \
+                (100 + prev['width'] / 2 if prev.get('width') else 140)
             n['y'] = prev['y']
         else:
-            n['x'] = offset[0] + n.get('width', 0)
+            n['x'] = offset[0] + n.get('width', 0) / 2
             n['y'] = offset[1] * rows
             rows += 1
+
+    for n in nodes:
+        if "width" in n:
+            del n["width"]
 
 
 def handle_node_flow(args):
