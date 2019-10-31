@@ -416,7 +416,7 @@ class Message(Protocol):
             if p not in parent.parameters:
                 raise LookupError("Undeclared parameter", p)
             elif parent.parameters[p].key:
-                p.key = True
+                self.parameters[p].key = True
 
     @property
     def name(self):

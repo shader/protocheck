@@ -137,7 +137,7 @@ def inject(parameters):
     return {
         "id": node_id(),
         "type": "inject",
-        "name": "",
+        "name": "inject",
         "topic": "",
         "payload": json.dumps({p.name: p.name for p in parameters}),
         "payloadType": "json",
@@ -158,14 +158,22 @@ def entry_nodes(role, spec):
     return nodes
 
 
-def out_nodes(role, message):
+def send_nodes(recipient):
+    nodes = [
+        json_node(),
+        udp_out_node(recipient)
+    ]
+    connect_nodes(nodes)
+    return nodes
+
+
+def msg_nodes(role, message, recipients):
     nodes = [
         inject(message.parameters.values()),
         bspl_message(message, sending=True),
-        json_node(),
-        udp_out_node(message.recipient)
     ]
     connect_nodes(nodes)
+    connect(nodes[-1], recipients[message.recipient.name][0])
     return nodes
 
 
@@ -214,15 +222,23 @@ def handle_node_flow(args):
         nodes = []
 
     for role in set(spec.roles.values()):
-        parameters = {
-            p for m in spec.messages for p in m.parameters.values()
-            if m.sender == role or m.recipient == role}
+        messages = {m for m in spec.messages
+                    if m.sender == role or m.recipient == role}
+        parameters = {p for m in messages for p in m.parameters.values()}
         tab = create_role_tab(role)
         role_nodes = entry_nodes(role, parameters)
 
-        for message in spec.messages:
-            if message.sender == role:
-                role_nodes.extend(out_nodes(role, message))
+        recipients = {m.recipient.name:
+                      send_nodes(m.recipient) for m in messages if m.recipient != role}
+        for recipient in set(spec.roles.values()):
+            if recipient == role:
+                continue
+            for message in spec.messages:
+                if message.sender == role and message.recipient == recipient:
+                    role_nodes.extend(msg_nodes(role, message, recipients))
+
+        for r in recipients.values():
+            role_nodes.extend(r)
 
         place(tab, role_nodes)
         nodes.append(tab)
