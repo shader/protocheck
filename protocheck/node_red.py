@@ -65,8 +65,8 @@ def udp_out_node(role, addr="localhost", base_port=base_port):
     }
 
 
-def json_node(name=""):
-    return {
+def json_node(name="", offset=None):
+    node = {
         "id": node_id(),
         "type": "json",
         "name": name,
@@ -74,6 +74,9 @@ def json_node(name=""):
         "action": "",
         "pretty": False,
     }
+    if offset:
+        node["offset"] = offset
+    return node
 
 
 def debug_payload(name=""):
@@ -160,7 +163,7 @@ def entry_nodes(role, spec):
 
 def send_nodes(recipient):
     nodes = [
-        json_node(),
+        json_node(offset=50),
         udp_out_node(recipient)
     ]
     connect_nodes(nodes)
@@ -196,17 +199,20 @@ def place(tab, nodes):
         n['z'] = tab['id']
         if backwires.get(n['id']):
             prev = node_map[backwires[n['id']][0]]
-            n['x'] = n.get('width', 0) / 2 + prev['x'] + \
-                (100 + prev['width'] / 2 if prev.get('width') else 140)
+            n['x'] = prev['x'] + (100 + prev['width'] / 2
+                                  if prev.get('width') else 140)
             n['y'] = prev['y']
         else:
-            n['x'] = offset[0] + n.get('width', 0) / 2
+            n['x'] = offset[0]
             n['y'] = offset[1] * rows
             rows += 1
+        n['x'] += n.get('width', 0) / 2 + n.get('offset', 0)
 
     for n in nodes:
         if "width" in n:
             del n["width"]
+        if "offset" in n:
+            del n["offset"]
 
 
 def handle_node_flow(args):
@@ -221,15 +227,19 @@ def handle_node_flow(args):
     else:
         nodes = []
 
-    for role in set(spec.roles.values()):
-        messages = {m for m in spec.messages
-                    if m.sender == role or m.recipient == role}
-        parameters = {p for m in messages for p in m.parameters.values()}
+    messages = {role: [m for m in spec.messages
+                       if m.sender == role or m.recipient == role]
+                for role in spec.roles.values()}
+    for role in sorted(set(spec.roles.values()),
+                       key=lambda r: len(
+                           [m for m in messages[r] if m.sender == r]),
+                       reverse=True):
+        parameters = {p for m in messages[role] for p in m.parameters.values()}
         tab = create_role_tab(role)
         role_nodes = entry_nodes(role, parameters)
 
         recipients = {m.recipient.name:
-                      send_nodes(m.recipient) for m in messages if m.recipient != role}
+                      send_nodes(m.recipient) for m in messages[role] if m.recipient != role}
         for recipient in set(spec.roles.values()):
             if recipient == role:
                 continue
