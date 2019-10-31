@@ -38,6 +38,11 @@ def KeyReduction():
 
 
 @pytest.fixture(scope="module")
+def AddIntermediary():
+    return load_file('samples/bspl/refinement/add-intermediary.bspl')
+
+
+@pytest.fixture(scope="module")
 def AllIn():
     return load_file('samples/bspl/refinement/all-in.bspl')
 
@@ -85,10 +90,9 @@ def test_unreceived(P):
 
 def test_extensions(P):
     u = UoD.from_protocol(P)
-    p1 = [Instance(P.messages['test'], float('inf'))]
-    assert extensions(u, empty_path()) == [p1]
-    assert extensions(u, p1) == [
-        [Instance(P.messages['test'], 0)]]
+    p1 = (Instance(P.messages['test'], float('inf')), )
+    assert extensions(u, empty_path()) == {p1}
+    assert extensions(u, p1) == {(Instance(P.messages['test'], 0), )}
 
 
 def test_sources(P):
@@ -126,27 +130,29 @@ def test_subsumes_initiation_reduction():
 def test_subsumes_key_reduction(KeyReduction):
     KeyP = KeyReduction.protocols['P']
     KeyQ = KeyReduction.protocols['Q']
-    print(known([Instance(KeyQ.messages['test'], 0)],
+    path_q = (Instance(KeyQ.messages['test'], 0), )
+    path_p = (Instance(KeyP.messages['test'], 0), )
+    print(known(path_q,
                 KeyQ.messages['test'].keys, KeyQ.roles['A']))
-    print(known([Instance(KeyP.messages['test'], 0)],
+    print(known(path_p,
                 KeyQ.messages['test'].keys, KeyQ.roles['A']))
     assert subsumes(
         UoD.from_protocol(KeyP),
         KeyP.public_parameters.keys(),
-        [Instance(KeyQ.messages['test'], 0)],
-        [Instance(KeyP.messages['test'], 0)],
+        path_q,
+        path_p,
         verbose=True)
 
 
 def test_max_paths(P):
     U = UoD.from_protocol(P)
 
-    assert max_paths(U) == [[Instance(P.messages['test'], 0)]]
+    assert max_paths(U) == [(Instance(P.messages['test'], 0), )]
 
 
 def test_all_paths(P, Flexible):
-    assert all_paths(UoD.from_protocol(P)) == [empty_path(), [
-        Instance(P.messages['test'], 0)]]
+    assert all_paths(UoD.from_protocol(P)) == {empty_path(), (
+        Instance(P.messages['test'], 0), )}
 
     assert len(all_paths(UoD.from_protocol(Flexible))) > 2
 
@@ -183,15 +189,16 @@ def test_initiation_reduction():
                    verbose=True) != {"ok": True}
 
 
-def test_polymorphism():
-    spec = load_file('samples/bspl/refinement/polymorphism.bspl')
+def test_message_split():
+    spec = load_file('samples/bspl/refinement/message-split.bspl')
     RFQ = spec.protocols["RFQ"]
     RefinedRFQ = spec.protocols["Refined-RFQ"]
     assert refines(UoD(), RFQ.public_parameters.keys(),
-                   RefinedRFQ, RFQ) == \
-        {"ok": False,
-         'path': [Instance(RefinedRFQ.messages['Introduction'], 0)],
-         'reason': 'Refined-RFQ has path that does not subsume any path in RFQ'}
+                   RefinedRFQ, RFQ)["ok"]
+
+    # {"ok": False,
+    #  'path': (Instance(RefinedRFQ.messages['Introduction'], 0),),
+    #  'reason': 'Refined-RFQ has path that does not subsume any path in RFQ'}
 
     assert refines(UoD(), RefinedRFQ.public_parameters.keys(),
                    RFQ, RefinedRFQ) != {"ok": True}
@@ -206,6 +213,17 @@ def test_dependent():
 
     assert refines(UoD(), Q.public_parameters.keys(),
                    P, Q) == {"ok": True}
+
+
+def test_polymorphism_reduction():
+    spec = load_file('samples/bspl/refinement/polymorphism.bspl')
+    P = spec.protocols["Polymorphic-RFQ"]
+    Q = spec.protocols["RFQ"]
+    assert refines(UoD(), P.public_parameters.keys(),
+                   Q, P) == {"ok": True}
+
+    assert refines(UoD(), Q.public_parameters.keys(),
+                   P, Q)["ok"] == False
 
 
 def test_key_reduction():
@@ -236,3 +254,14 @@ def test_all_in():
 
     assert refines(UoD(), Q.public_parameters.keys(),
                    P, Q) == {"ok": True}
+
+
+def test_add_intermediary(AddIntermediary):
+    P = AddIntermediary.protocols["Simple-Purchase"]
+    Q = AddIntermediary.protocols["Escrow-Purchase"]
+
+    assert refines(UoD(), P.public_parameters.keys(),
+                   Q, P) == {"ok": True}
+
+    assert refines(UoD(), Q.public_parameters.keys(),
+                   P, Q) != {"ok": True}

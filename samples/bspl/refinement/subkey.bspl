@@ -1,0 +1,26 @@
+P {
+  roles B, C, S
+  parameters out rfq key, out price
+  private item
+
+  B -> S: request[out rfq key, out item]
+  Catalog(S, C, in item key, out price)
+  S -> B: offer[in rfq, in item, in price]
+}
+
+Catalog {
+  roles S, C
+  parameters in item key, out price
+  S -> C: lookup[in item]
+  C -> S: result[in item, out price]
+}
+
+Q {
+  roles B, C, S
+  parameters out rfq key, out price
+  private item, extra
+
+  B -> S: request[out rfq key, out item, out extra]
+  Catalog(S, C, in item key, out price)
+  S -> B: offer[in rfq, in item, in price, in extra]
+}

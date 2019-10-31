@@ -1,0 +1,83 @@
+CreateOrder {
+  roles S, P, PS, C, CS, L, LS
+  parameters out complaint key, out results
+  private order, collection, specimen, unsuitable, received, results-id, request, notify
+
+  S -> P: Complain[out complaint]
+  P -> PS: EnterRequest[in complaint, out order]
+
+  ProviderCollection(P, L, order, collection, specimen)
+  LabCollection(S, P, L, order, collection, specimen)
+  ThirdPartyCollection(S, P, C, L, order, collection, specimen)
+
+  L -> C: NotifyUnsuitable[in order key, in specimen, out notify, out unsuitable]
+  L -> C: NotifyReceived[in order key, in specimen, out notify, out received]
+
+  L -> P: Results[in order key, in notify, out results]
+  L -> P: ResultsAvailable[in order key, in notify, nil results, out results-id]
+
+  P -> S: AllReceived[in complaint, in results]
+}
+
+CreateOrder2 {
+  roles S, P, PS, C, CS, L, LS
+  parameters out complaint key, out results
+  private order, collection, specimen, unsuitable, received, results-id, request, notify, extra
+
+  S -> P: Complain[out complaint]
+  P -> PS: EnterRequest[in complaint, out order, out extra]
+
+  ProviderCollection(P, L, order, collection, specimen)
+  LabCollection(S, P, L, order, collection, specimen)
+  ThirdPartyCollection(S, P, C, L, order, collection, specimen)
+
+  L -> C: NotifyUnsuitable[in order key, in specimen, out notify, out unsuitable]
+  L -> C: NotifyReceived[in order key, in specimen, out notify, out received]
+
+  L -> P: Results[in order key, in notify, out results]
+  L -> P: ResultsAvailable[in order key, in notify, nil results, out results-id]
+
+  P -> S: AllReceived[in complaint, in results]
+}
+
+ProviderCollection {
+  roles P, L
+  parameters in order key, out collection, out specimen
+
+  P -> L: Ship[in order, out collection, out specimen]
+}
+
+LabCollection {
+  roles S, P, L
+  parameters in order key, out collection, out specimen
+  private lc, instructions
+
+  P -> S: Instructions[in order, out instructions, out collection, out lc]
+  S -> L: Visit[in order, in instructions, out specimen, in lc]
+}
+
+ThirdPartyCollection {
+  roles S, P, C, L
+  parameters in order key, out collection, out specimen
+  private tpc, instructions, appointment
+
+  P -> S: Instructions[in order, out instructions, out collection, out tpc]
+  S -> C: SetupAppointment[in order, in instructions, out appointment, in tpc]
+  C -> L: Specimen[in order, in appointment, out specimen]
+}
+
+GetOrder {
+  roles R, P
+  parameters out subject key, in order key
+
+  R -> P: QueryOrder[out subject]
+  P -> R: Order[in subject, in order]
+}
+
+QueryResults {
+  roles P, L
+  parameters in order key, in results-id, out results
+
+  P -> L: Query[in order, in results-id]
+  L -> P: Results[in order, in results-id, out results]
+}

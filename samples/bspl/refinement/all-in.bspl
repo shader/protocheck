@@ -1,0 +1,14 @@
+P {
+  roles A, B
+  parameters in id key, in data
+
+  A → B: test[in id, in data]
+}
+
+Q {
+  roles A, B
+  parameters in id key, in data
+  private private
+
+  A → B: test[in id, in data, out private]
+}
