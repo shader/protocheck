@@ -8,8 +8,8 @@ CreateOrder {
 
   ProviderCollection(P, L, order, collection, specimen)
   LabCollection(S, P, L, order, collection, specimen)
-  ThirdPartyCollection(S, P, C, L, order, collection, specimen) 
- 
+  ThirdPartyCollection(S, P, C, L, order, collection, specimen)
+
   GetOrder(L, P, subject, order)
   L -> C: NotifyUnsuitable[in order, in specimen, out unsuitable]
   L -> C: NotifyReceived[in order, in specimen, out received]
