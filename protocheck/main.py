@@ -17,6 +17,7 @@ def handle_all(protocol, args, **kwargs):
 def check_syntax(*args):
     print("Syntax: correct")
 
+
 # Actions that only take one argument, and therefore can be repeated for each input file
 unary_actions = {
     'enactability': handle_enactability,
@@ -24,12 +25,12 @@ unary_actions = {
     'safety': handle_safety,
     'atomicity': handle_atomicity,
     'syntax': check_syntax,
-    'flow': handle_node_flow,
     'all': handle_all
 }
 
 # Actions with more complex argument schemes
 actions = {
+    'flow': handle_node_flow,
     'refinement': handle_refinement,
     'projection': handle_projection
 }

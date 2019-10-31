@@ -24,6 +24,7 @@ class Specification():
     def __init__(self, protocols):
         self.protocols = {}
         self.references = {}
+        self.roles = {}
         self.type = 'specification'
         for p in protocols:
             proto = Protocol(p, self)
@@ -42,8 +43,8 @@ class Specification():
             p.resolve_references(self)
 
     @property
-    def roles(self):
-        return set(r for r in p.roles for p in self.protocols.values())
+    def messages(self):
+        return set(m for p in self.protocols.values() for m in p.messages.values())
 
 
 def load(definition, path):
@@ -139,6 +140,10 @@ class Protocol(Base):
         self.references = [reference(r, self)
                            for r in schema.get('references', [])]
 
+        if type(parent) is Specification:
+            for r in self.roles.values():
+                parent.roles[r.name] = r
+
     def resolve_references(self, spec):
         refs = []
         for r in self.references:
@@ -152,7 +157,8 @@ class Protocol(Base):
     def instance(self, spec, parent, schema):
         p = Protocol(self.schema, parent)
         for i, r in enumerate(self.roles.values()):
-            p.roles[r.name] = parent.roles.get(schema['params'][i]['name'])
+            spec.roles[r.name] = p.roles[r.name] = parent.roles.get(
+                schema['params'][i]['name'])
         for i, par in enumerate(self.schema["parameters"]):
             p.public_parameters[par['name']].schema["name"] = \
                 schema['params'][i + len(self.roles)]['name']
@@ -409,6 +415,8 @@ class Message(Protocol):
         for p in self.parameters:
             if p not in parent.parameters:
                 raise LookupError("Undeclared parameter", p)
+            elif parent.parameters[p].key:
+                self.parameters[p].key = True
 
     @property
     def name(self):
