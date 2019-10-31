@@ -1,13 +1,15 @@
-RFQ {
+Polymorphic-RFQ {
   $\role$ B, S
-  $\param$ out ID key, out item
-  B $\mo$ S: Rfq[out ID key, out item]
+  $\param$ out ID key, out item, out price
+  B $\mo$ S: greet[out ID key]
+  B $\mo$ S: rfq[out ID key, out item]
+  S $\mo$ B: offer[in ID key, out item, out price]
+  S $\mo$ B: offer[in ID key, in item, out price]
 }
 
-
-Refined-RFQ {
+RFQ {
   $\role$ B, S
-  $\param$ out ID key, out item
-  B $\mapsto$ S: Introduction[out ID key]
-  B $\mapsto$ S: Request[in ID key, out item]
+  $\param$ out ID key, out item, out price
+  B $\mo$ S: rfq[out ID key, out item]
+  S $\mo$ B: offer[in ID key, in item, out price]
 }
