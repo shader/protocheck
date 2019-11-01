@@ -1,0 +1,64 @@
+Commerce {
+  roles B, S, C
+  parameters out ID key, out item, out shipped
+  private price, payment
+
+  Either-Starts(B, S, out ID key, out item)
+  Catalog(S, C, in ID key, in item key, out price)
+  S -> B: quote[in ID key, in item, in price]
+  Flexible-Payment(B, S, in ID key, in item, in price, out payment, out shipped)
+}
+
+Either-Starts {
+  $\role$ B, S
+  $\param$ out ID key, out item
+  B $\mapsto$ S: rfq[out ID key, out item]
+  S $\mapsto$ B: recommend[out ID key, out item]
+}
+
+Catalog {
+  roles S, C
+  parameters in ID key, in item key, out price
+  S -> C: lookup[in ID key, in item key]
+  C -> S: result[in ID key, in item key, out price]
+}
+
+Flexible-Payment {
+ $\role$ B, S
+ $\param$ in ID key, in item, in price, out payment, out shipped
+
+ B $\mo$ S: pay[in ID key, in item, in price, out payment]
+ S $\mo$ B: ship[in ID key, in item, in price, out shipped]
+}
+
+Refined-Commerce {
+  roles B, S, C
+  parameters out ID key, out item, out shipped
+  private price, payment
+
+  Buyer-Starts(B, S, out ID key, out item)
+  OneshotCatalog(S, C, in ID key, in item, out price)
+  S -> B: quote[in ID key, in item, in price]
+  Pay-First(B, S, in ID key, in item, in price, out payment, out shipped)
+}
+
+Buyer-Starts {
+  $\role$ B, S
+  $\param$ out ID key, out item
+  B $\mapsto$ S: rfq[out ID key, out item]
+}
+
+OneshotCatalog {
+  roles S, C
+  parameters in ID key, in item, out price
+  S -> C: lookup[in ID key, in item]
+  C -> S: result[in ID key, in item, out price]
+}
+
+Pay-First {
+  $\role$ B, S
+  $\param$ in ID key, in item, in price, out payment, out shipped
+
+  B $\mo$ S: pay[in ID key, in item, in price, out payment]
+  S $\mo$ B: ship[in ID key, in item, in payment, out shipped]
+}
