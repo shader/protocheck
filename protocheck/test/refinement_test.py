@@ -47,6 +47,11 @@ def AllIn():
     return load_file('samples/bspl/refinement/all-in.bspl')
 
 
+@pytest.fixture(scope="module")
+def PurchaseComposition():
+    return load_file('samples/bspl/refinement/purchase-composition.bspl')
+
+
 def test_known_empty(P):
     assert known(empty_path(), {}, P.roles['A']) == set()
 
@@ -151,8 +156,10 @@ def test_max_paths(P):
 
 
 def test_all_paths(P, Flexible):
-    assert all_paths(UoD.from_protocol(P)) == {empty_path(), (
-        Instance(P.messages['test'], 0), )}
+    assert all_paths(UoD.from_protocol(P)) == {
+        empty_path(),
+        (Instance(P.messages['test'], float("inf")), ),
+        (Instance(P.messages['test'], 0), )}
 
     assert len(all_paths(UoD.from_protocol(Flexible))) > 2
 
@@ -193,8 +200,8 @@ def test_message_split():
     spec = load_file('samples/bspl/refinement/message-split.bspl')
     RFQ = spec.protocols["RFQ"]
     RefinedRFQ = spec.protocols["Refined-RFQ"]
-    assert refines(UoD(), RFQ.public_parameters.keys(),
-                   RefinedRFQ, RFQ)["ok"]
+    assert not refines(UoD(), RFQ.public_parameters.keys(),
+                       RefinedRFQ, RFQ)["ok"]
 
     # {"ok": False,
     #  'path': (Instance(RefinedRFQ.messages['Introduction'], 0),),
@@ -259,6 +266,18 @@ def test_all_in():
 def test_add_intermediary(AddIntermediary):
     P = AddIntermediary.protocols["Simple-Purchase"]
     Q = AddIntermediary.protocols["Escrow-Purchase"]
+
+    print(all_paths(UoD.from_protocol(P)))
+    assert refines(UoD(), P.public_parameters,
+                   Q, P) == {"ok": True}
+
+    assert refines(UoD(), Q.public_parameters,
+                   P, Q) != {"ok": True}
+
+
+def test_composition(PurchaseComposition):
+    P = PurchaseComposition.protocols["Commerce"]
+    Q = PurchaseComposition.protocols["Refined-Commerce"]
 
     assert refines(UoD(), P.public_parameters.keys(),
                    Q, P) == {"ok": True}

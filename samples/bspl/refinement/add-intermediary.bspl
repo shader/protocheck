@@ -1,15 +1,19 @@
-Simple-Purchase {
+Simple-Payment {
   $\role$ B, S
-  $\param$ out ID key, out item, out payment, out deliver
-  B $\mo$ S: order[out ID key, out item, out payment]
+  $\param$ out ID key, out item, out deliver
+  private payment
+  S $\mo$ B: greet[out ID key]
+  B $\mo$ S: order[in ID key, out item, out payment]
   S $\mo$ B: ship[in ID key, in item, in payment, out deliver]
 }
 
-Escrow-Purchase {
+Escrowed-Payment {
   $\role$ B, S, E
-  $\param$ out ID key, out item, out payment, out deliver
-  B $\mapsto$ S: order[out ID key, out item]
-  B $\mapsto$ E: pay[in ID key, out payment]
-  E $\mapsto$ S: complete[in ID key, in payment]
-  S $\mapsto$ B: ship[in ID key, in item, in payment, out deliver]
+  $\param$ out ID key, out item, out deliver
+  private payment
+  S $\mo$ B: greet[out ID key]
+  B $\mo$ S: order[in ID key, out item]
+  B $\mo$ E: pay[in ID key, out payment]
+  E $\mo$ S: transfer[in ID key, in payment]
+  S $\mo$ B: ship[in ID key, in item, in payment, out deliver]
 }

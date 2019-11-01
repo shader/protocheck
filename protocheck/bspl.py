@@ -166,6 +166,10 @@ class Protocol(Base):
         return p
 
     @property
+    def public_parameter_list(self):
+        return [self.parameters[p['name']] for p in self.schema['params']]
+
+    @property
     def parameters(self):
         return merge(self.public_parameters, self.private_parameters)
 
