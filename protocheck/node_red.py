@@ -14,8 +14,8 @@ roles = {}
 base_port = 8000
 
 
-def get_role_port(name):
-    if not roles.get(name):
+def get_role_index(name):
+    if roles.get(name, -1) == -1:
         roles[name] = len(roles)
     return roles[name]
 
@@ -41,9 +41,9 @@ def udp_in_node(role, base_port=base_port):
         "type": "udp in",
         "name": role.name,
         "iface": "",
-        "port": base_port + get_role_port(role.name),
+        "port": base_port + get_role_index(role.name),
         "ipv": "udp4",
-        "multicast": False,
+        "multicast": "false",
         "group": "",
         "datatype": "utf8",
     }
@@ -56,10 +56,10 @@ def udp_out_node(role, addr="localhost", base_port=base_port):
         "name": "to " + role.name,
         "iface": "",
         "addr": addr,
-        "port": base_port + get_role_port(role.name),
+        "port": base_port + get_role_index(role.name),
         "ipv": "udp4",
         "outport": "",
-        "multicast": False,
+        "multicast": "false",
         "base64": False,
         "datatype": "utf8",
     }
@@ -95,12 +95,9 @@ def debug_payload(name=""):
 
 def connect(source, dest):
     if "wires" in source:
-        if len(dest["wires"]) > 0:
-            source["wires"][0].push(dest["id"])
-        else:
-            source["wires"] = [dest["id"]]
+        source["wires"][0].push(dest["id"])
     else:
-        source["wires"] = [dest["id"]]
+        source["wires"] = [[dest["id"]]]
 
 
 def connect_nodes(nodes):
@@ -189,7 +186,7 @@ def place(tab, nodes):
     for n in nodes:
         node_map[n['id']] = n
         if n.get('wires'):
-            for w in n['wires']:
+            for w in n['wires'][0]:
                 if backwires.get(w):
                     backwires[w].append(n['id'])
                 else:
