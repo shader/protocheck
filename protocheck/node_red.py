@@ -232,9 +232,10 @@ def handle_node_flow(args):
                        [m for m in messages[r] if m.sender == r]),
                    reverse=True)
     for role in roles:
-        parameters = {p for m in messages[role] for p in m.parameters.values()}
+        parameters = {p.name: p for m in messages[role]
+                      for p in m.parameters.values()}
         tab = create_role_tab(role)
-        role_nodes = entry_nodes(role, parameters)
+        role_nodes = entry_nodes(role, parameters.values())
 
         recipients = {m.recipient.name:
                       send_nodes(m.recipient) for m in messages[role] if m.recipient != role}
