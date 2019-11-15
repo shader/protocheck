@@ -126,7 +126,7 @@ def bspl_observer(role, parameters, sending=True):
         "id": node_id(),
         "type": "bspl-observer",
         "name": role,
-        "timeout": 60000,
+        "timeout": 0,
         "spec": parameter_string(parameters),
         "width": len(role) * 5 + 60
     }
