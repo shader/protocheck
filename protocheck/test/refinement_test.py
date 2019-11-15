@@ -264,8 +264,8 @@ def test_all_in():
 
 
 def test_add_intermediary(AddIntermediary):
-    P = AddIntermediary.protocols["Simple-Purchase"]
-    Q = AddIntermediary.protocols["Escrow-Purchase"]
+    P = AddIntermediary.protocols["Simple-Payment"]
+    Q = AddIntermediary.protocols["Escrowed-Payment"]
 
     print(all_paths(UoD.from_protocol(P)))
     assert refines(UoD(), P.public_parameters,
