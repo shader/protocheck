@@ -1,0 +1,14 @@
+Redundant {
+  roles B, S
+  parameters out ID key, out item, out price
+  B -> S: rfq[out ID key, out item]
+  S -> B: offer[in ID key, in item, out price]
+  S -> B: offer[in ID key, in item, out price]
+}
+
+RFQ {
+  roles B, S
+  parameters out ID key, out item, out price
+  B -> S: rfq[out ID key, out item]
+  S -> B: offer[in ID key, in item, out price]
+}

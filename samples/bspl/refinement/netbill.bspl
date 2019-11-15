@@ -1,0 +1,27 @@
+NetBill-Bliss {
+  roles C, M
+  parameters out ID key, out item, out price, out done
+  private confirmation, document, payment
+  C → M: rfq[out ID key, out item]
+  M → C: offer[in ID key, in item, out price]
+  M → C: offer[out ID key, out item, out price]
+  C → M: accept[in ID key, in item, in price, out confirmation]
+  C → M: accept[out ID key, out item, out price, out confirmation]
+  M → C: goods[in ID key, in item, in confirmation, out document]
+  M → C: goods[in ID key, in item, nil confirmation, out document]
+  C → M: pay[in ID key, in price, in document, out payment]
+  C → M: pay[in ID key, in price, nil document, out payment]
+  M → C: receipt [in ID key, in item, in payment, out done]
+}
+
+Original-NetBill{
+  roles C, M
+  parameters out ID key, out item, out price, out done
+  private confirmation, document, payment
+  C → M: rfq[out ID key, out item]
+  M → C: offer[in ID key, in item, out price]
+  C → M: accept[in ID key, in item, in price, out confirmation]
+  M → C: goods[in ID key, in item, in confirmation, out document]
+  C → M: pay[in ID key, in price, in document, out payment]
+  M → C: receipt[in ID key, in item, in payment, out done]
+}

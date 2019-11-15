@@ -1,0 +1,14 @@
+RFQ {
+  $\role$ B, S
+  $\param$ out ID key, out item, out price
+  B $\mo$ S: rfq[out ID key, out item]
+  S $\mo$ B: offer[in ID key, in item, out price]
+}
+
+Forwarded-RFQ {
+  $\role$ B, I, S
+  $\param$ out ID key, out item, out price
+  B $\mo$ I: rfq[out ID key, out item]
+  I $\mo$ S: forward[in ID key, in item]
+  S $\mo$ B: offer[in ID key, in item, out price]
+}

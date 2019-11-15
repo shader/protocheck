@@ -1,0 +1,40 @@
+Debit {
+  $\msf{roles}$ B, S
+  $\msf{parameters}$ in order key, out offer, out payment
+  private debitOffer, acceptDebit
+
+  B $\mapsto$ S: OfferDebit[in order, out offer, out debitOffer]
+  S $\mapsto$ B: AcceptDebit[in order, in debitOffer, out acceptDebit]
+  B $\mapsto$ S: PayDebit[in order, in acceptDebit, out payment]
+}
+
+Credit {
+  $\msf{roles}$ B, S
+  $\msf{parameters}$ in order key, out offer, out payment
+  private creditOffer, acceptCredit
+
+  B $\mapsto$ S: OfferCredit[in order, out offer, out creditOffer]
+  S $\mapsto$ B: AcceptCredit[in order, in creditOffer, out acceptCredit]
+  B $\mapsto$ S: PayCredit[in order, in acceptCredit, out payment]
+}
+
+RefinedPurchase {
+  $\msf{roles}$ B, S // Buyer, Seller
+  $\msf{parameters}$ out order key, out filled
+  private offer, payment
+
+  B $\mapsto$ S: PlaceOrder[out order]
+  Debit(B, S, order, offer, payment)
+  Credit(B, S, order, offer, payment)
+  S $\mapsto$ B: FillOrder[in order, in payment, out filled]
+}
+
+RefinedPurchase2 {
+  $\msf{roles}$ B, S // Buyer, Seller
+  $\msf{parameters}$ out order key, out filled
+  private offer, payment
+
+  B $\mapsto$ S: PlaceOrder[out order]
+  Debit(B, S, order, offer, payment)
+  S $\mapsto$ B: FillOrder[in order, in payment, out filled]
+}

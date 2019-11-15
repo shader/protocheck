@@ -15,6 +15,7 @@ CreateOrder {
 
   L -> P: Results[in order key, in notify, out results]
   L -> P: ResultsAvailable[in order key, in notify, nil results, out results-id]
+  QueryResults(P, L, order, results-id, results)
 
   P -> S: AllReceived[in complaint, in results]
 }
@@ -28,14 +29,11 @@ CreateOrder2 {
   P -> PS: EnterRequest[in complaint, out order, out extra]
 
   ProviderCollection(P, L, order, collection, specimen)
-  LabCollection(S, P, L, order, collection, specimen)
-  ThirdPartyCollection(S, P, C, L, order, collection, specimen)
 
   L -> C: NotifyUnsuitable[in order key, in specimen, out notify, out unsuitable]
   L -> C: NotifyReceived[in order key, in specimen, out notify, out received]
 
   L -> P: Results[in order key, in notify, out results]
-  L -> P: ResultsAvailable[in order key, in notify, nil results, out results-id]
 
   P -> S: AllReceived[in complaint, in results]
 }
@@ -54,6 +52,7 @@ LabCollection {
 
   P -> S: Instructions[in order, out instructions, out collection, out lc]
   S -> L: Visit[in order, in instructions, out specimen, in lc]
+  GetOrder(L,P, specimen, order)
 }
 
 ThirdPartyCollection {
@@ -64,20 +63,21 @@ ThirdPartyCollection {
   P -> S: Instructions[in order, out instructions, out collection, out tpc]
   S -> C: SetupAppointment[in order, in instructions, out appointment, in tpc]
   C -> L: Specimen[in order, in appointment, out specimen]
+  GetOrder(L,P, specimen, order)
 }
 
 GetOrder {
   roles R, P
-  parameters out subject key, in order key
+  parameters in subject key, in order
 
-  R -> P: QueryOrder[out subject]
-  P -> R: Order[in subject, in order]
+  R -> P: QueryOrder[in subject key]
+  P -> R: Order[in subject key, in order]
 }
 
 QueryResults {
   roles P, L
   parameters in order key, in results-id, out results
 
-  P -> L: Query[in order, in results-id]
+  P -> L: Query[in order, in results-id, nil results]
   L -> P: Results[in order, in results-id, out results]
 }

@@ -1,0 +1,39 @@
+Logistics  {
+ roles M, W, P, L, S, C // Merchant, Warehouse, Packer, Loader, Scanner, Courier
+ parameters in ID key, out order, out delivery
+ private tag, package, route
+
+ M $\mo$ W: NotifyOrder[out ID key, out order]
+ Pack(W, P, S, in ID key, in order, out tag, out package)
+ Load(W, L, S, C, in ID key, in order, in tag, out route)
+ W $\mo$ M: Deliver[in ID key, in route, out delivery]
+}
+
+Pack {
+  roles W, P, S // Warehouse, Packer, Scanner
+  parameters in ID key, in order, out tag, out package
+  private data, written
+
+  W $\mo$ P: Pack[in ID key, in order]
+  P $\mo$ W: Tag[in ID key, in order, out tag]
+  P $\mo$ S: WriteTag[in ID key, in order, in tag, out data]
+  S $\mo$ P: TagWritten[in ID key, in tag, in data, out written]
+  P $\mo$ W: Packed[in ID key, in written, out package]
+}
+
+Load {
+  roles W, L, S, C // Warehouse, Loader, Scanner, Courier
+  parameters out ID key, in order, in tag, out route
+  private type, vehicle, tag, find, found, package, loaded
+
+  W $\mo$ L: Load[in ID key, in order, in tag]
+
+  L $\mo$ C: GetVehicle[in ID key, in order, out type]
+  C $\mo$ L: SendVehicle[in ID key, in type, out vehicle]
+
+  L $\mo$ S: FindPackage[in ID key, in tag, out find]
+  S $\mo$ L: FoundPackage[in ID key, in tag, out package]
+  L $\mo$ C: LoadVehicle[in ID key, in package, in vehicle, out loaded]
+
+  C $\mo$ W: Enroute[in ID key, in vehicle, in package, out route]
+}

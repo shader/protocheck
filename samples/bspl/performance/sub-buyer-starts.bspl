@@ -37,9 +37,9 @@ Refined-Commerce {
   private price, payment
 
   Buyer-Starts(B, S, out ID key, out item)
-  Single-Lookup(S, C, in ID key, in item, out price)
+  Lookup-Prices(S, C, in ID key, in item key, out price)
   S -> B: quote[in ID key, in item, in price]
-  Pay-First(B, S, in ID key, in item, in price, out payment, out shipped)
+  Flexible-Payment(B, S, in ID key, in item, in price, out payment, out shipped)
 }
 
 Buyer-Starts {
