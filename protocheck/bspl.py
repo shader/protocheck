@@ -1,9 +1,9 @@
 from protocheck import __version__, logic
 from protocheck.precedence import consistent, pairwise,     \
     and_, or_, bx, sequential, simultaneous, impl, ordered, \
-    reset_stats, stats, wrap, var, name
+    reset_stats, stats, wrap, var, name, onehot
 from protocheck.bspl_parser import BsplParser
-from protocheck.logic import merge
+from protocheck.logic import merge, onehot0
 from functools import partial
 from more_itertools import intersperse
 import itertools
@@ -173,6 +173,10 @@ class Protocol(Base):
     def parameters(self):
         return merge(self.public_parameters, self.private_parameters)
 
+    @property
+    def all_parameters(self):
+        return {p for m in self.messages.values() for p in m.parameters}
+
     def _adorned(self, adornment):
         "helper method for selecting parameters with a particular adornment"
         return {p.name for p in self.public_parameters.values()
@@ -260,8 +264,7 @@ class Protocol(Base):
     @logic.named
     def unsafe(self):
         clauses = []
-        for p in self.public_parameters:
-            # only public out parameters can have safety conflicts
+        for p in self.all_parameters:
             sources = [m for m in self.p_cover(p)
                        if m.parameters[p].adornment == 'out']
             if len(sources) > 1:
@@ -320,6 +323,7 @@ class Protocol(Base):
         clauses["Non-simultaneity"] = {r.name: r.nonsimultaneity(self)
                                        for r in roles}
         clauses["Minimality"] = {r.name: r.minimality(self) for r in roles}
+        clauses["Uniqueness"] = {k: self.uniqueness(k) for k in self.keys}
         return clauses
 
     @property
@@ -335,6 +339,19 @@ class Protocol(Base):
     @logic.named
     def begin(self):
         return or_(*[m.sent for m in self.messages.values()])
+
+    def uniqueness(self, key):
+        "Bindings to key parameters uniquely identify enactments, so there should never be multiple messages with the same out key in the same enactment"
+
+        candidates = set()
+        for m in self.messages.values():
+            if key in m.outs:
+                candidates.add(simultaneous(
+                    m.sent, observe(m.sender, key)))
+        if candidates:
+            return onehot0(*candidates)
+        else:
+            return True
 
     def _complete(self):
         "Each out parameter must be observed by at least one role"
