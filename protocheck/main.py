@@ -1,5 +1,5 @@
 from protocheck.bspl import handle_enactability, handle_liveness, handle_safety, handle_atomicity, load_file, handle_projection
-from protocheck.refinement import handle_refinement
+from protocheck.refinement import handle_refinement, path_liveness, path_safety
 from protocheck.node_red import handle_node_flow
 import configargparse
 import sys
@@ -23,6 +23,8 @@ unary_actions = {
     'enactability': handle_enactability,
     'liveness': handle_liveness,
     'safety': handle_safety,
+    'path-safety': path_safety,
+    'path-liveness': path_liveness,
     'atomicity': handle_atomicity,
     'syntax': check_syntax,
     'all': handle_all
