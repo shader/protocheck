@@ -73,17 +73,27 @@ def known(path, keys, R):
     return k
 
 
+def sources(path, p):
+    """The set of all roles that produce p as an out parameter in path"""
+    return set(i.msg.sender.name for i in path if p in i.msg.outs)
+
+
 def viable(path, msg):
     msg_count = len([i.msg for i in path if i.msg == msg])
-    if not msg.ins.symmetric_difference({p.name for p in msg.parameters.values()}) and msg_count > 0:
-        # only allow one copy of an all "in" message
+    if not msg.ins.union(msg.nils).symmetric_difference({p.name for p in msg.parameters.values()}) and msg_count > 0:
+        # only allow one copy of an all "in"/"nil" message
         return False
     if msg.sender == External:
+        # only send external messages if they would contribute
         k = known(path, (), msg.recipient)
         if not k.issuperset(msg.ins):
             return True
         else:
             return False
+    out_keys = msg.keys.intersection(msg.outs)
+    if out_keys and all(sources(path, p) for p in out_keys):
+        # don't allow multiple key bindings in the same path; they're different enactments
+        return False
     k = known(path, msg.keys, msg.sender)
     return k.issuperset(msg.ins) \
         and k.isdisjoint(msg.outs) \
@@ -102,6 +112,8 @@ class UoD():
         else:
             dependencies = {}
             for r in protocol.roles.values():
+                if r.name is External.name:
+                    continue
                 keys = protocol.ins.intersection(protocol.keys)
                 # generate messages that provide p to each sender
                 schema = {
@@ -113,6 +125,7 @@ class UoD():
                         for p in protocol.ins.difference(keys)]
                 }
                 dependencies[r.name] = schema
+            # hmmm; probably shouldn't modify protocol...
             protocol.roles[External.name] = External
             uod = UoD(list(protocol.messages.values()) + [Message(s, protocol) for s in dependencies.values()],
                       protocol.roles.values())
@@ -139,6 +152,12 @@ def unreceived(path):
     return set(i for i in path if i.delay == float("inf"))
 
 
+def any_unreceived(path):
+    for i in path:
+        if i.delay == float('inf'):
+            return True
+
+
 def receive(path, instance):
     p = list(path)
     i = p.index(instance)
@@ -149,11 +168,6 @@ def receive(path, instance):
 def extensions(U, path):
     xs = {path + (b,) for b in branches(U, path)}
     return xs.union({receive(path, u) for u in unreceived(path)})
-
-
-def sources(path, p):
-    """The set of all roles that produce p as an out parameter in path"""
-    return set(i.msg.sender.name for i in path if p in i.msg.outs)
 
 
 def subsumes(U, params, a, b, verbose=False):
@@ -211,7 +225,7 @@ def total_knowledge(U, path):
     return k
 
 
-def path_liveness(protocol):
+def path_liveness(protocol, args=None):
     U = UoD.from_protocol(protocol)
     new_paths = [empty_path()]
     while len(new_paths):
@@ -227,10 +241,11 @@ def path_liveness(protocol):
     return {"live": True}
 
 
-def path_safety(protocol):
+def path_safety(protocol, args=None):
     U = UoD.from_protocol(protocol)
     parameters = {p for m in protocol.messages.values() for p in m.outs}
     new_paths = [empty_path()]
+    count = 0
     while len(new_paths):
         path = new_paths.pop()
         xs = extensions(U, path)
@@ -248,7 +263,6 @@ def path_safety(protocol):
 def all_paths(U, verbose=False):
     paths = set()
     new_paths = {empty_path()}
-    total_paths = 0
     longest_path = 0
     while new_paths:
         p = new_paths.pop()
@@ -262,11 +276,11 @@ def all_paths(U, verbose=False):
             new_paths.update(xs)
         paths.add(p)  # add path to paths even if it has unreceived messages
         if verbose:
-            print("{} paths, longest path: {}, unprocessed: {}".format(
-                len(paths), longest_path, len(new_paths)), end='\n')
+            if len(paths) % 10 == 0:
+                print("\r{} paths, longest path: {}, unprocessed: {}".format(
+                    len(paths), longest_path, len(new_paths)), end='')
             if len(paths) % 1000 == 0:
                 print(p)
-        total_paths = len(paths)
     if verbose:
         print()
     return paths
@@ -290,11 +304,11 @@ def refines(U, params, Q, P, verbose=False):
             "p_keys": p_keys,
             "q_keys": q_keys,
             "diff": p_keys.symmetric_difference(q_keys),
-            "reason": "{} uses keys that do not appear in {}".format(P.name, Q.name)
+            "reason": "{} uses keys that do not appear in {}".format(Q.name, P.name)
         }
 
-    paths_Q = all_paths(U_Q)
-    paths_P = all_paths(U_P)
+    paths_Q = all_paths(U_Q, verbose)
+    paths_P = all_paths(U_P, verbose)
 
     longest_Q = longest_P = []
     for q in paths_Q:
@@ -322,7 +336,7 @@ def refines(U, params, Q, P, verbose=False):
                 match = p
                 # print("p branches: ", branches(U_P, p))
                 # print("q branches: ", branches(U_Q, q))
-                if not extensions(U_P, p) or extensions(U_Q, q):
+                if not branches(U_P, p) or branches(U_Q, q) or any_unreceived(q):
                     break  # only try again if p has branches but q doesn't
         if match == None:
             return {
@@ -330,7 +344,7 @@ def refines(U, params, Q, P, verbose=False):
                 "path": q,
                 "reason": "{} has path that does not subsume any path in {}".format(Q.name, P.name)
             }
-        if extensions(U_P, match) and not extensions(U_Q, q):
+        if branches(U_P, match) and not (branches(U_Q, q) or any_unreceived(q)):
             #subsumes(U_P, params, q, match, True)
             return {
                 "ok": False,
