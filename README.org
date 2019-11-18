@@ -8,14 +8,18 @@ Protocheck is an application designed to verify various correctness properties o
     Protocheck requires python version 3.4 or later, because of one of its dependencies.
     On Windows, Python 3.6+ is recommended.
 
-*** Install from source (Github)
-    1. Download the source code from github:
+*** Install from source (Gitlab)
+    1. Download the source code from gitlab:
        #+begin_example
-       $ git clone https://github.com/shader/protocheck.git
+       $ git clone https://gitlab.com/masr/protocheck.git
        #+end_example
     2. Optionally create virtualenv for protocheck
        #+begin_example
        $ mkvirtualenv protocheck
+       #+end_example
+    3. Activate virtualenv (do this whenever you start a new shell session)
+       #+begin_example
+       $ workon protocheck
        #+end_example
     3. Install package in development mode
        #+begin_example
@@ -28,12 +32,12 @@ Protocheck is an application designed to verify various correctness properties o
 
    #+begin_example
 usage: bspl [-h] [-t] [-e] [-d DEPTH] [-s] [-v] [-q] [-f FILTER]
-            {safety,enactability,liveness,atomicity,all} input [input ...]
+            {projection,path-safety,path-liveness,flow,safety,enactability,liveness,atomicity,all} input [input ...]
 
 BSPL Protocol property checker
 
 positional arguments:
-  {safety,enactability,liveness,atomicity,all}
+  {path-safety,path-liveness,projection,flow,safety,enactability,liveness,atomicity,all}
                         Primary action to perform
   input                 Protocol description file(s)
 
