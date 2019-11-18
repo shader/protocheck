@@ -72,7 +72,9 @@ def main():
             for protocol in spec.protocols.values():
                 if re.match(args.filter, protocol.name):
                     print("%s (%s): " % (protocol.name, path))
-                    unary_actions[args.action](protocol, args)
+                    result = unary_actions[args.action](protocol, args)
+                    if result:
+                        print(result)
                     print()
 
             if not spec.protocols:
