@@ -1,6 +1,6 @@
 pycosat
 pytest
-grako
+TatSu
 boolexpr
 configargparse
 simplejson

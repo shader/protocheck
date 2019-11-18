@@ -2,7 +2,6 @@ from protocheck import __version__, logic
 from protocheck.precedence import consistent, pairwise,     \
     and_, or_, bx, sequential, simultaneous, impl, ordered, \
     reset_stats, stats, wrap, var, name, onehot
-from protocheck.bspl_parser import BsplParser
 from protocheck.logic import merge, onehot0
 from functools import partial
 from more_itertools import intersperse
@@ -10,10 +9,30 @@ import itertools
 import re
 import pprint
 import json
-import grako
+import tatsu
 import sys
+import os
 pp = pprint.PrettyPrinter()
 debug = False
+
+try:
+    from protocheck.bspl_parser import BsplParser
+    model = BsplParser()
+except:
+    grammar_path = os.path.join(os.path.dirname(__file__), "bspl.gr")
+    with open(grammar_path, 'r', encoding='utf8') as grammar:
+        model = tatsu.compile(grammar.read())
+    try:
+        parser_path = os.path.join(os.path.dirname(__file__), "bspl_parser.py")
+        with open(grammar_path, 'r', encoding='utf8') as grammar:
+            bspl_parser = tatsu.to_python_sourcecode(
+                grammar.read(), 'Bspl', 'bspl_parser.py')
+            print(bspl_parser)
+            with open(parser_path, 'w', encoding='utf8') as parser_file:
+                parser_file.write(bspl_parser)
+    except:
+        # Couldn't save the file properly; eat the error and continue with dynamically loaded parser
+        pass
 
 
 def flatten(nested):
@@ -48,9 +67,8 @@ class Specification():
 
 
 def load(definition, path):
-    parser = BsplParser(parseinfo=False)
     try:
-        protocols = parser.parse(definition, rule_name='document')
+        protocols = model.parse(definition, rule_name='document')
         return Specification(protocols)
     except:  # catch *all* exceptions
         if not debug:  # suppress traceback by default
@@ -75,7 +93,7 @@ class Base():
     """Class containing elements common to protocols, messages, etc."""
 
     def __init__(self, schema, parent):
-        if isinstance(schema, grako.ast.AST):
+        if isinstance(schema, tatsu.ast.AST):
             self.schema = schema.asjson()
         else:
             self.schema = schema.copy()
@@ -595,7 +613,7 @@ class Role(Base):
 class Parameter(Base):
     def __init__(self, schema, parent=None):
         super().__init__(schema, parent)
-        self.key = schema['key']
+        self.key = schema.get('key', False)
 
     @property
     def adornment(self):
