@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import time
+from ttictoc import TicToc
 import boolexpr as bx
 from boolexpr import and_, impl, or_, onehot, and_s
 from itertools import combinations, permutations, chain
@@ -348,7 +348,8 @@ def consistent(*statements, exhaustive=False):
 
     clauses = statements
     cons = []
-    start = time.clock()
+    t = TicToc()
+    t.tic()
     if options.exhaustive or exhaustive:
         cons += exhaustive_consistency(statements)
         result = solve(clauses + cons, options, depth="exhaustive")
@@ -361,7 +362,7 @@ def consistent(*statements, exhaustive=False):
             depth += 1
             cons = consistency(clauses + cons)
             result = solve(clauses + cons, options, depth)
-    stop = time.clock()
-    stats["time"] += stop - start
+    t.toc()
+    stats["time"] += t.elapsed
 
     return result
