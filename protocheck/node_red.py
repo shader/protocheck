@@ -106,8 +106,8 @@ def connect_nodes(nodes):
             connect(nodes[i - 1], nodes[i])
 
 
-def parameter_string(parameters):
-    return ", ".join([p.format() for p in parameters])
+def parameter_string(parameters, adornment=True):
+    return ", ".join([p.format(adornment=adornment) for p in parameters])
 
 
 def bspl_message(message, sending=True):
@@ -127,7 +127,7 @@ def bspl_observer(role, parameters, sending=True):
         "type": "bspl-observer",
         "name": role,
         "timeout": 0,
-        "spec": parameter_string(parameters),
+        "spec": parameter_string(parameters, adornment=False),
         "width": len(role) * 5 + 60
     }
 

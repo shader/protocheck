@@ -619,8 +619,12 @@ class Parameter(Base):
     def adornment(self):
         return self.schema['adornment']
 
-    def format(self):
-        base = "{} {}".format(self.adornment, self.name)
+    def format(self, adornment=True):
+        if adornment:
+            base = "{} {}".format(self.adornment, self.name)
+        else:
+            base = "{}".format(self.name)
+
         if self.key:
             return base + " key"
         else:
