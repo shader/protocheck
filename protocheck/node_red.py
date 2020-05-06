@@ -20,6 +20,10 @@ def get_role_index(name):
     return roles[name]
 
 
+def get_port(role, base_port=base_port):
+    return base_port + get_role_index(role.name)
+
+
 def node_id():
     return '{:08x}.{:06x}'.format(random.randrange(16**8), random.randrange(16**6))
 
@@ -41,7 +45,7 @@ def udp_in_node(role, base_port=base_port):
         "type": "udp in",
         "name": role.name,
         "iface": "",
-        "port": base_port + get_role_index(role.name),
+        "port": get_port(role, base_port=base_port),
         "ipv": "udp4",
         "multicast": "false",
         "group": "",
@@ -49,14 +53,14 @@ def udp_in_node(role, base_port=base_port):
     }
 
 
-def udp_out_node(role, addr="localhost", base_port=base_port):
+def udp_out_node(addr="localhost", base_port=base_port):
     return {
         "id": node_id(),
         "type": "udp out",
-        "name": "to " + role.name,
+        "name": "outgoing UDP",
         "iface": "",
         "addr": addr,
-        "port": base_port + get_role_index(role.name),
+        "port": None,
         "ipv": "udp4",
         "outport": "",
         "multicast": "false",
@@ -89,7 +93,8 @@ def debug_payload(name=""):
         "console": False,
         "tostatus": False,
         "complete": "payload",
-        "targetType": "msg"
+        "targetType": "msg",
+        "width": 60
     }
 
 
@@ -110,34 +115,46 @@ def parameter_string(parameters, adornment=True):
     return ", ".join([p.format(adornment=adornment) for p in parameters])
 
 
-def bspl_message(message, sending=True):
-    name = "send " + message.name
+def bspl_incoming(role, parameters, sending=True):
     return {
         "id": node_id(),
-        "type": "bspl-message",
-        "name": name,
-        "spec": parameter_string(message.parameters.values()),
-        "width": 50 + len(name) * 5
-    }
-
-
-def bspl_observer(role, parameters, sending=True):
-    return {
-        "id": node_id(),
-        "type": "bspl-observer",
-        "name": role,
+        "type": "bspl-incoming",
+        "name": "Check " + role + " incoming",
         "timeout": 0,
         "spec": parameter_string(parameters, adornment=False),
         "width": len(role) * 5 + 60
     }
 
 
-def inject(parameters):
-    parameters = {p for p in parameters if p.adornment == "out" or p.key}
+def message_specs(sent_messages):
+    specs = []
+    for msg in sent_messages:
+        params = parameter_string(msg.parameters.values())
+        recipient = msg.recipient.name
+        port = get_port(msg.recipient)
+        specs.append(params + " -> " + recipient + ":" + str(port))
+    return specs
+
+
+def bspl_outgoing(role, sent_messages, sending=True):
+    name = "Check " + role.name + " outgoing"
+    return {
+        "id": node_id(),
+        "type": "bspl-outgoing",
+        "name": name,
+        "spec": "\n".join(message_specs(sent_messages)),
+        "width": 50 + len(name) * 5
+    }
+
+
+def inject(message):
+    parameters = {
+        p for p in message.parameters.values() if p.adornment in ["out", "in"]}
+    name = "inject " + message.shortname
     return {
         "id": node_id(),
         "type": "inject",
-        "name": "inject",
+        "name": name,
         "topic": "",
         "payload": json.dumps({p.name: p.name for p in parameters}),
         "payloadType": "json",
@@ -145,35 +162,26 @@ def inject(parameters):
         "crontab": "",
         "once": False,
         "onceDelay": 0.1,
-        "width": 60
+        "width": 60 + len(name) * 5
     }
 
 
-def entry_nodes(role, spec):
+def incoming_nodes(role, spec):
     nodes = [udp_in_node(role),
              json_node(),
-             bspl_observer(role.name, spec),
+             bspl_incoming(role.name, spec),
              debug_payload(role.name)]
     connect_nodes(nodes)
     return nodes
 
 
-def send_nodes(recipient):
+def outgoing_nodes(role, sent_messages):
     nodes = [
+        bspl_outgoing(role, sent_messages),
         json_node(offset=50),
-        udp_out_node(recipient)
+        udp_out_node()
     ]
     connect_nodes(nodes)
-    return nodes
-
-
-def msg_nodes(role, message, recipients):
-    nodes = [
-        inject(message.parameters.values()),
-        bspl_message(message, sending=True),
-    ]
-    connect_nodes(nodes)
-    connect(nodes[-1], recipients[message.recipient.name][0])
     return nodes
 
 
@@ -227,6 +235,9 @@ def handle_node_flow(args):
     messages = {role: [m for m in spec.messages
                        if m.sender == role or m.recipient == role]
                 for role in spec.roles.values()}
+    sent_messages = {role: [m for m in spec.messages if m.sender == role]
+                     for role in spec.roles.values()}
+
     roles = sorted(set(r for r in spec.roles.values() if len(messages[r])),
                    key=lambda r: len(
                        [m for m in messages[r] if m.sender == r]),
@@ -235,19 +246,17 @@ def handle_node_flow(args):
         parameters = {p.name: p for m in messages[role]
                       for p in m.parameters.values()}
         tab = create_role_tab(role)
-        role_nodes = entry_nodes(role, parameters.values())
+        role_nodes = incoming_nodes(role, parameters.values())
 
-        recipients = {m.recipient.name:
-                      send_nodes(m.recipient) for m in messages[role] if m.recipient != role}
-        for recipient in roles:
-            if recipient == role:
-                continue
-            for message in spec.messages:
-                if message.sender == role and message.recipient == recipient:
-                    role_nodes.extend(msg_nodes(role, message, recipients))
+        msg_nodes = [inject(message)
+                     for message in sent_messages[role]]
+        role_nodes.extend(msg_nodes)
 
-        for r in recipients.values():
-            role_nodes.extend(r)
+        outgoing = outgoing_nodes(role, sent_messages[role])
+
+        for msg in msg_nodes:
+            connect_nodes([msg, outgoing[0]])
+        role_nodes.extend(outgoing)
 
         place(tab, role_nodes)
         nodes.append(tab)
