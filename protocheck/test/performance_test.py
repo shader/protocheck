@@ -1,11 +1,11 @@
 import pytest
-from ttictoc import TicToc
+from ttictoc import Timer
 from statistics import median
 from protocheck.refinement import *
 
 
 def perf_test(objects, properties):
-    t = TicToc()
+    t = Timer()
     for obj in objects:
         for name, fn in properties.items():
             times = []
@@ -41,7 +41,7 @@ def PurchaseComposition():
 
 
 # def test_linear(Linear):
-#     t = TicToc()
+#     t = Timer()
 #     print("Linear: ")
 #     print("protocol,paths,min,mean,max")
 #     for protocol in Linear.protocols.values():
@@ -57,7 +57,7 @@ def PurchaseComposition():
 
 
 # def test_concurrent_paths(Concurrent):
-#     t = TicToc()
+#     t = Timer()
 #     print("protocol,paths,min,mean,max")
 #     for protocol in Concurrent.protocols.values():
 #         times = []
@@ -71,7 +71,7 @@ def PurchaseComposition():
 
 
 # def test_concurrent_refinement(Concurrent):
-#     t = TicToc()
+#     t = Timer()
 #     print("protocol,paths,min,mean,max")
 #     for protocol in Concurrent.protocols.values():
 #         times = []
@@ -86,7 +86,7 @@ def PurchaseComposition():
 
 
 # def test_one_independent(OneIndependent):
-#     t = TicToc()
+#     t = Timer()
 #     print("protocol,paths,min,mean,max")
 #     for protocol in OneIndependent.protocols.values():
 #         times = []
@@ -100,7 +100,7 @@ def PurchaseComposition():
 
 
 def test_refinement_performance(PurchaseComposition):
-    t = TicToc()
+    t = Timer()
     print("Refinement: ")
     print("Protocol, Min, Avg, Max")
     Ps = ['Either-Starts', 'Lookup-Prices', 'Flexible-Payment']
@@ -119,7 +119,7 @@ def test_refinement_performance(PurchaseComposition):
 
 
 def test_sat_composition_performance(PurchaseComposition):
-    t = TicToc()
+    t = Timer()
     print("SAT (composition): ")
     print('Protocol, Property, Min, Mean, Max, Times')
     properties = {
@@ -130,7 +130,7 @@ def test_sat_composition_performance(PurchaseComposition):
 
 
 def test_sat_subprotocol_performance(PurchaseComposition):
-    t = TicToc()
+    t = Timer()
     print("SAT (components): ")
     print('Protocol, Property, Min, Mean, Max')
 
@@ -156,7 +156,7 @@ def test_sat_subprotocol_performance(PurchaseComposition):
 
 
 def test_single_sub_performance(PurchaseComposition):
-    t = TicToc()
+    t = Timer()
     print("SAT (single sub): ")
     print('Protocol, Property, Min, Mean, Max, Times')
 
@@ -189,8 +189,8 @@ def test_single_sub_path_performance(PurchaseComposition):
     print('Protocol, Property, Min, Mean, Max, Times')
 
     specs = [  # 'sub-buyer-starts.bspl',
-        #'sub-pay-first.bspl',
-        #'sub-single-lookup.bspl',
+        # 'sub-pay-first.bspl',
+        # 'sub-single-lookup.bspl',
         'purchase-composition.bspl']
 
     for s in specs:
