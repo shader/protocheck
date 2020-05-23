@@ -1,4 +1,4 @@
-from protocheck.bspl import handle_enactability, handle_liveness, handle_safety, handle_atomicity, load_file, handle_projection
+from protocheck.bspl import handle_enactability, handle_liveness, handle_safety, handle_atomicity, load_file, handle_projection, handle_json
 from protocheck.refinement import handle_refinement, path_liveness, path_safety
 from protocheck.node_red import handle_node_flow
 import configargparse
@@ -27,14 +27,15 @@ unary_actions = {
     'path-liveness': path_liveness,
     'atomicity': handle_atomicity,
     'syntax': check_syntax,
-    'all': handle_all
+    'all': handle_all,
+    'json': handle_json
 }
 
 # Actions with more complex argument schemes
 actions = {
     'flow': handle_node_flow,
     'refinement': handle_refinement,
-    'projection': handle_projection
+    'projection': handle_projection,
 }
 
 
@@ -50,6 +51,7 @@ def main():
                help='Prevent printing of violation and formula output')
     parser.add('-f', '--filter', default='.*',
                help='Only process protocols matching regexp')
+    parser.add('-i', '--indent', type=int, help='Amount to indent json')
     parser.add('--version', action="store_true", help='Print version number')
     parser.add('--debug', action="store_true", help='Debug mode')
     parser.add('action', help='Primary action to perform',
@@ -71,7 +73,8 @@ def main():
             spec = load_file(path)
             for protocol in spec.protocols.values():
                 if re.match(args.filter, protocol.name):
-                    print("%s (%s): " % (protocol.name, path))
+                    if args.action != 'json':
+                        print("%s (%s): " % (protocol.name, path))
                     result = unary_actions[args.action](protocol, args)
                     if result:
                         print(result)

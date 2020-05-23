@@ -414,6 +414,24 @@ class Protocol(Base):
              "\n" if self.private_parameters else "",
              "\n  ".join([r.format(ref=True) for r in self.references]))
 
+    def to_dict(self):
+        data = {
+            "name": self.name,
+            "type": self.type,
+            "parameters": [p for p in self.public_parameters.keys()],
+            "keys": [k for k in self.keys],
+            "ins": [i for i in self.ins],
+            "outs": [i for i in self.outs],
+            "nils": [i for i in self.nils],
+        }
+        if self.roles:
+            data["roles"] = [r for r in self.roles.keys()]
+        # should we output references, or just flatten to messages?
+        if self.references:
+            data["messages"] = {r.shortname: r.to_dict()
+                                for r in self.messages.values()}
+        return data
+
     def projection(protocol, role):
         schema = protocol.schema
         references = [
@@ -553,6 +571,12 @@ class Message(Protocol):
                                          self.recipient.name,
                                          self.shortname,
                                          ', '.join([p.format() for p in self.parameters.values()]))
+
+    def to_dict(self):
+        data = super(Message, self).to_dict()
+        data["to"] = self.recipient.name
+        data["from"] = self.sender.name
+        return data
 
 
 class Role(Base):
@@ -734,3 +758,7 @@ def handle_projection(args):
 
     for p in projections:
         print(p.format())
+
+
+def handle_json(protocol, args):
+    print(json.dumps(protocol.to_dict(), indent=args.indent))
